@@ -5,6 +5,7 @@ import Image from "next/image";
 import {
   STATIONS,
   STATION_LANES,
+  LANE_MIN_STEP,
   WorkflowStep,
   RoleTone
 } from "@/lib/workflow-explorer/workflow-data";
@@ -405,6 +406,7 @@ export default function IsometricCanvas({
   const [step3GreenLaneActive, setStep3GreenLaneActive] = useState<boolean>(false);
   const [step3PulseNode, setStep3PulseNode] = useState<string>("examGeneral");
   const [step3CustomStatus, setStep3CustomStatus] = useState<string>("");
+  const [step3PetArrived, setStep3PetArrived] = useState<boolean>(false);
   const rafRef = useRef<number | null>(null);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -537,10 +539,11 @@ export default function IsometricCanvas({
     applyCamBox([...FULL_VIEWBOX]);
   };
 
-  // Reset wireframe tab when step changes
+  // Reset wireframe tab & step3 state when step changes
   useEffect(() => {
     setSelectedWireframeIdx(0);
     setZoomLevel(1);
+    setStep3PetArrived(false);
     if (currentStep.uiWireframes.length === 0 && sceneLayout === "ui-only") {
       setSceneLayout("split");
     }
@@ -601,14 +604,16 @@ export default function IsometricCanvas({
           setStep3GreenLaneActive(petFrac < 0.7);
           setStep3PulseNode(petFrac > 0.65 ? "examGeneral" : "waitingHall");
           setStep3CustomStatus("เดินเข้าห้องตรวจ Exam Room (General · Zone A ห้อง 1)");
+          setStep3PetArrived(false);
         } else {
-          // 3. Reached exam room: system call gone, exam room pulses
+          // 3. Reached exam room: system call gone, exam room pulses, DVM begins exam process
           setAnimProgress(1);
           setPacketProgress(1);
           setStep3PacketVisible(false);
           setStep3GreenLaneActive(false);
           setStep3PulseNode("examGeneral");
           setStep3CustomStatus("เข้าห้องตรวจเรียบร้อย (Zone A ห้อง 1) · สัตวแพทย์เริ่มตรวจ");
+          setStep3PetArrived(true);
         }
 
         if (elapsed < tStep3Total) {
@@ -665,23 +670,15 @@ export default function IsometricCanvas({
           <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-3.5 py-1.5 bg-[#f4ebd9] border-b border-[#d8c6aa]">
             <div className="flex flex-wrap items-center gap-3.5">
               <span className="text-[11px] font-extrabold text-[#331e10] tracking-wider">
-                MULTI-STREAM LANES:
+                LANES:
               </span>
-              <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-[#4a2e1b]">
-                <span className="w-4 h-0.5 bg-[#8c5828] inline-block" />
-                Pet &amp; Owner (แสดงตลอด)
+              <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-[#8c5828]">
+                <span className="w-4 h-1 bg-[#8c5828] rounded-full inline-block" />
+                Pet &amp; Owner Movement
               </span>
-              <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-[#0c4a6e]">
-                <span className="w-4 h-0.5 border-b-2 border-dashed border-[#0284c7] inline-block" />
-                Exam Card / Order
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-[#4c1d95]">
-                <span className="w-4 h-0.5 border-b-2 border-dashed border-[#8b5cf6] inline-block" />
-                Sideflow (Xray/USG &amp; Depts)
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-[#14532d]">
-                <span className="w-4 h-0.5 border-b-2 border-dotted border-[#16a34a] inline-block" />
-                System Call &amp; Discharge
+              <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-[#16a34a]">
+                <span className="w-4 h-0.5 border-b-2 border-dashed border-[#16a34a] inline-block" />
+                System Data Flow
               </span>
             </div>
 
@@ -917,7 +914,7 @@ export default function IsometricCanvas({
                   SUPPORT ZONE (XRAY / USG &amp; TX ROOM)
                 </text>
 
-                {/* Vertical Band: Pharmacy & Rx Unit (Vertical Pairing) */}
+                {/* Vertical Band: Rx & Pharmacy Unit */}
                 <rect
                   x="825"
                   y="90"
@@ -937,27 +934,29 @@ export default function IsometricCanvas({
                   letterSpacing="0.05em"
                   fill="#7e22ce"
                 >
-                  PHARMACY &amp; RX UNIT
+                  RX &amp; PHARMACY
                 </text>
               </g>
             )}
 
             {/* =================================================================
                 LAYER 1: MULTI-STREAM LANES (<g className="lanes">)
-                In STEP ZOOM mode, only render lanes active in or connecting focused stations
+                - Future lanes are strictly hidden (never appear before their process step)
+                - In STEP ZOOM mode: only render lanes active in the current step
+                - In FULL MAP mode: past completed lanes render as faint static guidelines (opacity 0.18)
+                - Stream styling: Pet & Owner (Brown Solid) vs System Data Flow (Green Dashed)
                 ================================================================= */}
             <g className="lanes">
               {STATION_LANES.filter((lane) => {
-                if (!isAutoZoom) return true;
-                return (
-                  currentStep.activeLanes.includes(lane.id) ||
-                  lane.id === currentStep.laneId ||
-                  (stepFocusNodeIds.has(lane.from) && stepFocusNodeIds.has(lane.to))
-                );
-              }).map((lane) => {
+                // Strict check: future lanes never appear before their process step
+                const minStep = LANE_MIN_STEP[lane.id] ?? 1;
+                if (minStep > currentStep.id) {
+                  return false;
+                }
+
                 let isActive =
-                  currentStep.activeLanes.includes(lane.id) ||
-                  lane.id === currentStep.laneId;
+                  Boolean(currentStep.laneId && lane.id === currentStep.laneId) ||
+                  currentStep.activeLanes.includes(lane.id);
 
                 // Step 3: green system lane activates only when system signal is sent in Phase 2
                 if (currentStep.id === 3 && lane.stream === "system") {
@@ -968,28 +967,45 @@ export default function IsometricCanvas({
                   isActive = animProgress > 0.02;
                 }
 
-                let strokeColor = "#c6b193";
+                // In STEP ZOOM: isolate only active lanes for current step
+                if (isAutoZoom) {
+                  return isActive;
+                }
+                // In FULL MAP: show lanes reached so far (past ones render faintly, future hidden)
+                return true;
+              }).map((lane) => {
+                let isActive =
+                  Boolean(currentStep.laneId && lane.id === currentStep.laneId) ||
+                  currentStep.activeLanes.includes(lane.id);
+
+                // Step 3: green system lane activates only when system signal is sent in Phase 2
+                if (currentStep.id === 3 && lane.stream === "system") {
+                  isActive = step3GreenLaneActive;
+                }
+                // Step 3: owner walkway lane activates when pet starts walking
+                if (currentStep.id === 3 && lane.stream === "owner") {
+                  isActive = animProgress > 0.02;
+                }
+
+                let strokeColor = "#cfbeaa";
                 let dashArray = "4 4";
                 let marker = "url(#arrow-muted)";
-                let strokeW = isActive ? 2.8 : 1.5;
+                let strokeW = isActive ? 2.8 : 1.2;
 
-                if (lane.stream === "owner") {
-                  strokeColor = isActive ? "#8c5828" : "#bfa688";
-                  dashArray = isActive ? "none" : "6 4";
-                  marker = isActive ? "url(#arrow-owner)" : "url(#arrow-muted)";
-                  strokeW = isActive ? 3.2 : 1.8;
-                } else if (lane.stream === "exam-card") {
-                  strokeColor = isActive ? "#0284c7" : "#9db8c9";
-                  dashArray = "7 4";
-                  marker = isActive ? "url(#arrow-card)" : "url(#arrow-muted)";
-                } else if (lane.stream === "sideflow") {
-                  strokeColor = isActive ? "#8b5cf6" : "#b9add4";
-                  dashArray = "6 4";
-                  marker = isActive ? "url(#arrow-sideflow)" : "url(#arrow-muted)";
-                } else if (lane.stream === "system") {
-                  strokeColor = isActive ? "#16a34a" : "#9ec4ab";
-                  dashArray = "3 4";
-                  marker = isActive ? "url(#arrow-system)" : "url(#arrow-muted)";
+                if (isActive) {
+                  if (lane.stream === "owner") {
+                    // 1. Pet & Owner Movement: Brown solid line
+                    strokeColor = "#8c5828";
+                    dashArray = "none";
+                    marker = "url(#arrow-owner)";
+                    strokeW = 3.2;
+                  } else {
+                    // 2. All data streams are System Data Flow: Green dashed line
+                    strokeColor = "#16a34a";
+                    dashArray = "6 4";
+                    marker = "url(#arrow-system)";
+                    strokeW = 2.8;
+                  }
                 }
 
                 const laneOpacity =
@@ -997,7 +1013,7 @@ export default function IsometricCanvas({
                     ? 0.08
                     : isActive
                     ? 1
-                    : 0.55;
+                    : 0.18;
 
                 return (
                   <g key={lane.id}>
@@ -1007,7 +1023,7 @@ export default function IsometricCanvas({
                         fill="none"
                         stroke={strokeColor}
                         strokeWidth={strokeW + 4}
-                        opacity="0.16"
+                        opacity="0.18"
                       />
                     )}
                     <path
@@ -1340,51 +1356,83 @@ export default function IsometricCanvas({
                         strokeWidth="1.6"
                       />
 
-                      {/* Protocol-Explorer Style Compact Packet Card (.packet-tag + .packet-title only) */}
-                      <g transform={`translate(${cardCenterX - 63}, ${cardCenterY - 14.5})`}>
-                        <rect
-                          x="0"
-                          y="0"
-                          width="126"
-                          height="29"
-                          rx="3"
-                          fill={palette.bg}
-                          stroke={palette.border}
-                          strokeWidth="1.3"
-                        />
-                        {/* Header Tag Strip */}
-                        <rect
-                          x="0"
-                          y="0"
-                          width="126"
-                          height="13.5"
-                          rx="2.5"
-                          fill={palette.badgeBg}
-                        />
-                        <text
-                          x="63"
-                          y="9.8"
-                          textAnchor="middle"
-                          fontSize="8.5"
-                          fontWeight="800"
-                          letterSpacing="0.06em"
-                          fill="#ffffff"
-                        >
-                          {pkt.tag}
-                        </text>
+                      {/* Protocol-Explorer Style Compact Packet Card (Support 2-row or 3-row layout) */}
+                      {(() => {
+                        const hasLines = Boolean(pkt.lines && pkt.lines.length > 0);
+                        const cardW = hasLines ? 146 : 126;
+                        const cardH = hasLines ? 44 : 29;
+                        return (
+                          <g transform={`translate(${cardCenterX - cardW / 2}, ${cardCenterY - cardH / 2})`}>
+                            <rect
+                              x="0"
+                              y="0"
+                              width={cardW}
+                              height={cardH}
+                              rx="3"
+                              fill={palette.bg}
+                              stroke={palette.border}
+                              strokeWidth="1.3"
+                            />
+                            {/* Header Tag Strip */}
+                            <rect
+                              x="0"
+                              y="0"
+                              width={cardW}
+                              height="14"
+                              rx="2.5"
+                              fill={palette.badgeBg}
+                            />
+                            <text
+                              x={cardW / 2}
+                              y="10.2"
+                              textAnchor="middle"
+                              fontSize="8.5"
+                              fontWeight="800"
+                              letterSpacing="0.06em"
+                              fill="#ffffff"
+                            >
+                              {pkt.tag}
+                            </text>
 
-                        {/* Packet Body Title */}
-                        <text
-                          x="63"
-                          y="23.8"
-                          textAnchor="middle"
-                          fontSize="9"
-                          fontWeight="800"
-                          fill={palette.text}
-                        >
-                          {pkt.title}
-                        </text>
-                      </g>
+                            {/* Body: 2 sub-rows for 3-row card (e.g. Check-in List) or single title */}
+                            {hasLines && pkt.lines ? (
+                              <>
+                                <text
+                                  x={cardW / 2}
+                                  y="24"
+                                  textAnchor="middle"
+                                  fontSize="8.6"
+                                  fontWeight="800"
+                                  fill={palette.text}
+                                >
+                                  {pkt.lines[0]}
+                                </text>
+                                <text
+                                  x={cardW / 2}
+                                  y="36.5"
+                                  textAnchor="middle"
+                                  fontSize="8.6"
+                                  fontWeight="800"
+                                  fill={palette.text}
+                                >
+                                  {pkt.lines[1]}
+                                </text>
+                              </>
+                            ) : (
+                              <text
+                                x={cardW / 2}
+                                y="23.8"
+                                textAnchor="middle"
+                                fontSize="9"
+                                fontWeight="800"
+                                fill={palette.text}
+                              >
+                                {pkt.title}
+                              </text>
+                            )}
+                          </g>
+                        );
+                      })()}
                     </g>
                   );
                 })}
@@ -1402,6 +1450,16 @@ export default function IsometricCanvas({
                 const palette = TONE_PALETTE[note.tone];
                 const ny = st.y + (note.offsetY ?? -68);
                 const nx = st.x + (note.offsetX ?? 0);
+
+                let noteTitle = note.title;
+                let noteDetail = note.detail;
+                let noteRoleLabel = note.roleLabel;
+
+                // Step 3 dynamic note switch: after pet enters exam room, DVM Call Queue becomes Exam Process
+                if (currentStep.id === 3 && note.id === "note-step3-dvm" && (step3PetArrived || animProgress >= 0.99)) {
+                  noteTitle = "Exam Process";
+                  noteDetail = "เริ่มตรวจรักษา";
+                }
 
                 return (
                   <g
@@ -1445,7 +1503,7 @@ export default function IsometricCanvas({
                         letterSpacing="0.03em"
                         fill={palette.badgeBg}
                       >
-                        [{note.roleLabel}] {note.title}
+                        [{noteRoleLabel}] {noteTitle}
                       </text>
 
                       {/* Action Detail Line */}
@@ -1456,7 +1514,7 @@ export default function IsometricCanvas({
                         fontWeight="600"
                         fill={palette.text}
                       >
-                        {note.detail}
+                        {noteDetail}
                       </text>
                     </g>
                   </g>

@@ -19,6 +19,7 @@ export interface AnimatedPacketSpec {
   toNode: string;
   tag: string;
   title: string;
+  lines?: string[];
   fields: Array<{ k: string; v: string }>;
   stopOffsetX?: number;
   stopOffsetY?: number;
@@ -174,7 +175,7 @@ export const STATIONS: Record<string, StationNode> = {
   surgery: {
     id: 'surgery',
     label: 'SURGERY',
-    labelTh: 'ห้องผ่าตัดและศัลยกรรม',
+    labelTh: 'ศัลยกรรม',
     code: '',
     category: 'department',
     categoryLabel: 'EXAM DEPT',
@@ -269,49 +270,49 @@ export const STATION_LANES: StationLane[] = [
     from: 'entrance',
     to: 'registration',
     stream: 'owner',
-    d: 'M 125 310 L 185 310'
+    d: 'M 139 310 L 171 310'
   },
   {
     id: 'owner:registration>waitingHall',
     from: 'registration',
     to: 'waitingHall',
     stream: 'owner',
-    d: 'M 265 310 L 325 310'
+    d: 'M 279 310 L 311 310'
   },
   {
     id: 'owner:waitingHall>examGeneral',
     from: 'waitingHall',
     to: 'examGeneral',
     stream: 'owner',
-    d: 'M 405 310 L 495 310'
+    d: 'M 419 310 L 480 310'
   },
   {
     id: 'owner:examGeneral>txRoom',
     from: 'examGeneral',
     to: 'txRoom',
     stream: 'owner',
-    d: 'M 605 335 L 695 460'
+    d: 'M 642 338 L 686 458'
   },
   {
     id: 'owner:txRoom>cashier',
     from: 'txRoom',
     to: 'cashier',
     stream: 'owner',
-    d: 'M 775 485 L 865 485'
+    d: 'M 789 485 L 851 485'
   },
   {
     id: 'owner:cashier>pharmacy',
     from: 'cashier',
     to: 'pharmacy',
     stream: 'owner',
-    d: 'M 905 455 L 905 345'
+    d: 'M 915 452 L 915 374'
   },
   {
     id: 'owner:pharmacy>exit',
     from: 'pharmacy',
     to: 'exit',
     stream: 'owner',
-    d: 'M 945 310 L 1015 310'
+    d: 'M 959 310 L 1001 310'
   },
 
   // --- STREAM 2: EXAM CARD & CLINICAL ORDER LANES (Parallel Offset Dashed Lanes) ---
@@ -320,35 +321,35 @@ export const STATION_LANES: StationLane[] = [
     from: 'registration',
     to: 'examGeneral',
     stream: 'exam-card',
-    d: 'M 260 295 Q 390 250 500 295'
+    d: 'M 275 292 Q 380 248 480 292'
   },
   {
     id: 'card:examGeneral>txRoom',
     from: 'examGeneral',
     to: 'txRoom',
     stream: 'exam-card',
-    d: 'M 620 325 L 710 450'
+    d: 'M 652 328 L 702 448'
   },
   {
     id: 'card:txRoom>rxRoom',
     from: 'txRoom',
     to: 'rxRoom',
     stream: 'exam-card',
-    d: 'M 755 455 L 885 200'
+    d: 'M 752 452 Q 805 280 852 168'
   },
   {
     id: 'card:rxRoom>pharmacy',
     from: 'rxRoom',
     to: 'pharmacy',
     stream: 'exam-card',
-    d: 'M 925 195 L 925 285'
+    d: 'M 925 228 L 925 276'
   },
   {
     id: 'card:rxRoom>cashier',
     from: 'rxRoom',
     to: 'cashier',
     stream: 'exam-card',
-    d: 'M 945 195 L 945 455'
+    d: 'M 955 228 L 955 452'
   },
 
   // --- STREAM 3: SIDEFLOW & SPECIALTY LANES (Purple Parallel Lanes) ---
@@ -357,42 +358,42 @@ export const STATION_LANES: StationLane[] = [
     from: 'examGeneral',
     to: 'xrayUsg',
     stream: 'sideflow',
-    d: 'M 540 345 L 540 455'
+    d: 'M 542 418 L 542 452'
   },
   {
     id: 'sideflow:xrayUsg>examGeneral',
     from: 'xrayUsg',
     to: 'examGeneral',
     stream: 'sideflow',
-    d: 'M 570 455 L 570 345'
+    d: 'M 568 452 L 568 418'
   },
   {
     id: 'sideflow:registration>examEr',
     from: 'registration',
     to: 'examEr',
     stream: 'sideflow',
-    d: 'M 255 285 L 335 170'
+    d: 'M 260 275 L 314 138'
   },
   {
     id: 'sideflow:waitingHall>examEr',
     from: 'waitingHall',
     to: 'examEr',
     stream: 'sideflow',
-    d: 'M 365 280 L 365 175'
+    d: 'M 365 276 L 365 208'
   },
   {
     id: 'sideflow:waitingHall>examSp',
     from: 'waitingHall',
     to: 'examSp',
     stream: 'sideflow',
-    d: 'M 395 280 L 525 165'
+    d: 'M 405 275 L 502 138'
   },
   {
     id: 'sideflow:examGeneral>surgery',
     from: 'examGeneral',
     to: 'surgery',
     stream: 'sideflow',
-    d: 'M 585 280 L 705 165'
+    d: 'M 595 270 L 682 138'
   },
 
   // --- STREAM 4: SYSTEM AUTOMATED CONTROL LANES (Green Dotted Signal Lanes) ---
@@ -401,23 +402,49 @@ export const STATION_LANES: StationLane[] = [
     from: 'examGeneral',
     to: 'waitingHall',
     stream: 'system',
-    d: 'M 495 320 L 405 320'
+    d: 'M 480 322 L 420 322'
   },
   {
     id: 'system:cashier>pharmacy',
     from: 'cashier',
     to: 'pharmacy',
     stream: 'system',
-    d: 'M 885 455 L 885 345'
+    d: 'M 890 452 L 890 374'
   },
   {
     id: 'system:cashier>registration',
     from: 'cashier',
     to: 'registration',
     stream: 'system',
-    d: 'M 865 500 Q 545 575 255 335'
+    d: 'M 860 500 Q 545 575 235 374'
   }
 ];
+
+
+// Step where each lane first appears in the clinical journey
+export const LANE_MIN_STEP: Record<string, number> = {
+  'owner:entrance>registration': 1,
+  'owner:registration>waitingHall': 2,
+  'card:registration>examGeneral': 2,
+  'sideflow:registration>examEr': 2,
+  'system:examGeneral>waitingHall': 3,
+  'owner:waitingHall>examGeneral': 3,
+  'sideflow:waitingHall>examEr': 3,
+  'sideflow:waitingHall>examSp': 3,
+  'sideflow:examGeneral>surgery': 4,
+  'sideflow:examGeneral>xrayUsg': 5,
+  'sideflow:xrayUsg>examGeneral': 5,
+  'owner:examGeneral>txRoom': 6,
+  'card:examGeneral>txRoom': 6,
+  'card:txRoom>rxRoom': 7,
+  'owner:txRoom>cashier': 7,
+  'card:rxRoom>cashier': 8,
+  'system:cashier>pharmacy': 8,
+  'system:cashier>registration': 8,
+  'card:rxRoom>pharmacy': 9,
+  'owner:cashier>pharmacy': 9,
+  'owner:pharmacy>exit': 9
+};
 
 // ============================================================================
 // WORKFLOWS (9 ขั้นตอน ครอบคลุมการเคลื่อนที่ของ Pet & Owner, Exam Card และ System)
@@ -568,16 +595,17 @@ export const WORKFLOWS: WorkflowItem[] = [
           },
           {
             id: 'pkt-step2-card',
-            stream: 'exam-card',
-            tone: 'dvm',
+            stream: 'system',
+            tone: 'system',
             laneId: 'card:registration>examGeneral',
             fromNode: 'registration',
             toNode: 'examGeneral',
-            tag: 'EXAM CARD',
-            title: 'Exam Card -> Zone A',
+            tag: 'CHECK-IN LIST',
+            title: 'Zone A > Check-in List',
+            lines: ['Zone A > Check-in List', 'Zone B > Check-in List'],
             fields: [
               { k: 'VISIT NO', v: 'ACTIVE' },
-              { k: 'TARGET', v: 'General Zone A' }
+              { k: 'TARGET', v: 'Zone A & Zone B' }
             ],
             stopOffsetX: 22,
             stopOffsetY: -68
@@ -598,9 +626,9 @@ export const WORKFLOWS: WorkflowItem[] = [
             id: 'note-step2-sys',
             nodeId: 'waitingHall',
             tone: 'system',
-            roleLabel: 'SYSTEM',
-            title: 'Visit Active',
-            detail: 'Sent data to station',
+            roleLabel: 'SYS',
+            title: 'Check-in Q',
+            detail: 'Sent data to station Q list',
             offsetX: 0,
             offsetY: -66
           }
@@ -757,8 +785,8 @@ export const WORKFLOWS: WorkflowItem[] = [
         time: '0.052s',
         fromNode: 'examGeneral',
         toNode: 'examGeneral',
-        laneId: 'card:examGeneral>txRoom',
-        activeLanes: ['card:registration>examGeneral'],
+        laneId: '',
+        activeLanes: [],
         badgeColor: 'dvm',
         petOwner: {
           fromNode: 'examGeneral',
@@ -1017,7 +1045,7 @@ export const WORKFLOWS: WorkflowItem[] = [
               { k: 'PROC', v: 'Fluid & Wound Care' }
             ],
             stopOffsetX: 0,
-            stopOffsetY: 78
+            stopOffsetY: -120
           }
         ],
         stationNotes: [
