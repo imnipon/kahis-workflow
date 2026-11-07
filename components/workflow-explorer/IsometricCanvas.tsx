@@ -544,6 +544,10 @@ export default function IsometricCanvas({
     setSelectedWireframeIdx(0);
     setZoomLevel(1);
     setStep3PetArrived(false);
+    setAnimProgress(0);
+    setPacketProgress(0);
+    setStep3PacketVisible(false);
+    setStep3GreenLaneActive(false);
     if (currentStep.uiWireframes.length === 0 && sceneLayout === "ui-only") {
       setSceneLayout("split");
     }
@@ -553,6 +557,13 @@ export default function IsometricCanvas({
   useEffect(() => {
     let startTime: number | null = null;
     const isStep3 = currentStep.id === 3;
+
+    // Reset progress and states on step change or replay
+    setAnimProgress(0);
+    setPacketProgress(0);
+    setStep3PetArrived(false);
+    setStep3PacketVisible(false);
+    setStep3GreenLaneActive(false);
 
     // Standard step durations
     const transitionDuration = 1150 / playbackSpeed;
@@ -578,6 +589,7 @@ export default function IsometricCanvas({
           setStep3GreenLaneActive(false);
           setStep3PulseNode("examGeneral");
           setStep3CustomStatus("นั่งรอเรียกคิวที่ Waiting Hall (คิว WA001) · สัตวแพทย์กดเรียกคิว");
+          setStep3PetArrived(false);
         } else if (elapsed < tSignalArrive) {
           // 2. Green arrow & system call moves from exam room to waiting hall
           setAnimProgress(0);
@@ -587,6 +599,7 @@ export default function IsometricCanvas({
           setStep3GreenLaneActive(true);
           setStep3PulseNode(frac > 0.6 ? "waitingHall" : "examGeneral");
           setStep3CustomStatus("ระบบส่งสัญญาณเรียกคิวและเสียงประกาศ WA001 -> โถงพักคอย");
+          setStep3PetArrived(false);
         } else if (elapsed < tPetStart) {
           // 2. Pause at waiting hall: TV screen updated, voice announced (Waiting Hall pulses)
           setAnimProgress(0);
@@ -595,6 +608,7 @@ export default function IsometricCanvas({
           setStep3GreenLaneActive(true);
           setStep3PulseNode("waitingHall");
           setStep3CustomStatus("จอ TV อัปเดตคิว WA001 เข้าตรวจ Zone A ห้อง 1 · เจ้าของเตรียมพาสัตว์เข้าห้อง");
+          setStep3PetArrived(false);
         } else if (elapsed < tPetArrive) {
           // 3. Pet & Owner moves to exam room; when reaching, system call disappears
           const petFrac = Math.min(1, (elapsed - tPetStart) / (tPetArrive - tPetStart));
@@ -954,16 +968,23 @@ export default function IsometricCanvas({
                   return false;
                 }
 
+                // Owner movement lanes only appear during their active step (past movement paths disappear)
+                if (lane.stream === "owner") {
+                  if (lane.id !== currentStep.laneId && !currentStep.activeLanes.includes(lane.id)) {
+                    return false;
+                  }
+                }
+
                 let isActive =
                   Boolean(currentStep.laneId && lane.id === currentStep.laneId) ||
                   currentStep.activeLanes.includes(lane.id);
 
                 // Step 3: green system lane activates only when system signal is sent in Phase 2
-                if (currentStep.id === 3 && lane.stream === "system") {
+                if (currentStep.id === 3 && lane.id === "system:examGeneral>waitingHall") {
                   isActive = step3GreenLaneActive;
                 }
                 // Step 3: owner walkway lane activates when pet starts walking
-                if (currentStep.id === 3 && lane.stream === "owner") {
+                if (currentStep.id === 3 && lane.id === "owner:waitingHall>examGeneral") {
                   isActive = animProgress > 0.02;
                 }
 
@@ -979,17 +1000,17 @@ export default function IsometricCanvas({
                   currentStep.activeLanes.includes(lane.id);
 
                 // Step 3: green system lane activates only when system signal is sent in Phase 2
-                if (currentStep.id === 3 && lane.stream === "system") {
+                if (currentStep.id === 3 && lane.id === "system:examGeneral>waitingHall") {
                   isActive = step3GreenLaneActive;
                 }
                 // Step 3: owner walkway lane activates when pet starts walking
-                if (currentStep.id === 3 && lane.stream === "owner") {
+                if (currentStep.id === 3 && lane.id === "owner:waitingHall>examGeneral") {
                   isActive = animProgress > 0.02;
                 }
 
                 let strokeColor = "#cfbeaa";
                 let dashArray = "4 4";
-                let marker = "url(#arrow-muted)";
+                let marker: string | undefined = undefined;
                 let strokeW = isActive ? 2.8 : 1.2;
 
                 if (isActive) {
@@ -1456,7 +1477,7 @@ export default function IsometricCanvas({
                 let noteRoleLabel = note.roleLabel;
 
                 // Step 3 dynamic note switch: after pet enters exam room, DVM Call Queue becomes Exam Process
-                if (currentStep.id === 3 && note.id === "note-step3-dvm" && (step3PetArrived || animProgress >= 0.99)) {
+                if (currentStep.id === 3 && note.id === "note-step3-dvm" && step3PetArrived) {
                   noteTitle = "Exam Process";
                   noteDetail = "เริ่มตรวจรักษา";
                 }
