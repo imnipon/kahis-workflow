@@ -781,9 +781,15 @@ export default function ExplorerShell() {
                   </div>
 
                   <div className="bg-[#f9f3e5] p-2.5 rounded border border-[#e8dcc6]">
-                    <strong className="text-[#331e10] block mb-1">มุมมอง Canvas แบบ Non-Modal (2 Views: FLOW MAP &amp; UI &amp; SCENE):</strong>
+                    <strong className="text-[#331e10] block mb-1">มุมมอง Canvas แบบ Non-Modal และระบบกล้อง (Views &amp; Camera):</strong>
                     <ul className="list-disc pl-4 space-y-1 m-0">
                       <li><strong>ปุ่ม FLOW MAP</strong>: แสดงแผนผัง 13 สถานี พร้อมจุด Pet &amp; Owner ที่แสดงค้างตลอดเวลา และแอนิเมชันการ์ด Packet + ป้าย Callout Note ผุดขึ้นตามจังหวะ Action แบบเดียวกับ Protocol Explorer</li>
+                      <li><strong>ระบบกล้อง CAMERA (STEP ZOOM vs FULL MAP)</strong>:
+                        <ul className="list-disc pl-4 mt-1 space-y-0.5">
+                          <li><strong>STEP ZOOM</strong>: ซูมและจัดมุมกล้องติดตามสถานีที่กำลังมี Action อัตโนมัติ พร้อมคัดกรองเฉพาะสถานีที่เกี่ยวข้องในแต่ละขั้นตอน</li>
+                          <li><strong>FULL MAP (Zoom &amp; Pan)</strong>: แสดงผังครบทั้ง 13 สถานีและกรอบโซนโรงพยาบาล สามารถใช้<strong>ล้อเมาส์หมุนเพื่อซูมเข้า/ออก</strong> ณ ตำแหน่งเมาส์ (100% - 600%), <strong>คลิกเมาส์ซ้ายค้างแล้วลากเพื่อเลื่อนผัง (Pan)</strong> รวมถึงปุ่ม <code>+</code>, <code>−</code>, <code>RESET</code> โดยมุมกล้องจะคงตำแหน่งเดิมไว้ไม่ดีดกลับเมื่อเปลี่ยนสเต็ป</li>
+                        </ul>
+                      </li>
                       <li><strong>ปุ่มแนะนำดูหน้าจอ (Inspect UI &amp; Scene CTA)</strong>: แถบปุ่มด้านล่างใน FLOW MAP สำหรับกดสลับเข้าไปดูรายละเอียดหน้าจอระบบ KAHIS ในแท็บ UI &amp; SCENE โดยไม่ต้องเด้ง Modal ทับหน้าจอ</li>
                       <li><strong>ปุ่ม UI &amp; SCENE</strong>: มุมมองตรวจสอบหน้าจอ KAHIS EMR Wireframe คู่กับฉากคลินิก รองรับโหมด Split View, Full UI Screen, Full Clinic Scene และปุ่มซูม 100%-200% ภายใน Panel</li>
                     </ul>
@@ -866,7 +872,8 @@ export default function ExplorerShell() {
                 </div>
                 <ul className="list-disc pl-5 space-y-1.5 text-[#5c4028] m-0">
                   <li><strong>Next.js 15.5+ &amp; React 19</strong>: พัฒนาด้วย TypeScript 5.7 แบบ Type-Safe 100% ประมวลผลแบบ Client-side Interactive Simulation</li>
-                  <li><strong>Pure SVG 3D Isometric Math</strong>: วาดแท่นสถานี 3 มิติ 5 จุดด้วยสมการระนาบ Polygon (Top, Left, Right Face) โดยไม่ต้องพึ่งพา 3D Library หนักๆ</li>
+                  <li><strong>Pure SVG 3D Isometric Math &amp; 13 Nodes</strong>: วาดแท่นสถานี 3 มิติ 13 จุดด้วยสมการระนาบ Polygon (Top, Left, Right Face) โดยไม่ต้องพึ่งพา 3D Library หนักๆ</li>
+                  <li><strong>Dynamic SVG Camera &amp; Interactive Zoom/Pan</strong>: สถาปัตยกรรมกล้องผ่าน SVG <code>viewBox</code> แบบ 2 โหมด: โหมด STEP ZOOM เคลื่อนกล้องอัตโนมัติแบบ Cubic Ease-out (620ms) และโหมด FULL MAP ที่รองรับ Wheel Zoom รอบพิกัดเมาส์จริง พร้อม Drag-to-Pan ชดเชย Letterbox Offset และจำกัด Bounding Clamp ปลอดภัย</li>
                   <li><strong>Traveling Token &amp; Trailing Comet Tail</strong>: แอนิเมชันลูกแก้วเคลื่อนที่ระหว่างสถานีพร้อมแสงหางดาวตก 3 ระดับ Opacity และแท็ก Ref Code</li>
                   <li><strong>Dual Font Stack Parity</strong>: ใช้ <strong>Iosevka</strong> (Self-hosted 6 weights) สำหรับตัวเลข/รหัส/ภาษาอังกฤษ และ <strong>IBM Plex Sans Thai Looped</strong> สำหรับภาษาไทย</li>
                   <li><strong>Warm Earth-Tone Palette</strong>: ชุดสีโทนกระดาษสีเหลืองอุ่น (Parchment #F6EFE0) ผสานหมึกสีน้ำตาลเข้ม (Sepia #4A2E1B / Umber #331E10) เพื่อความสบายตา</li>
@@ -883,7 +890,10 @@ export default function ExplorerShell() {
                 </div>
                 <div className="space-y-2 text-[12.5px]">
                   <div className="border-l-2 border-[#b4531a] pl-3">
-                    <strong className="text-[#b4531a]">Version 1.0.0 (Current)</strong>: ปรับจุดสีสถานะใหม่ 6 สี (DVM ฟ้า, Sideflow ม่วง, Alarm ส้ม, Pet &amp; Owner, Staff, System), ปรับขนาดและชนิดฟอนต์เทียบเท่า Protocol Explorer, ฝังฟอนต์ Iosevka + IBM Plex Sans Thai Looped, เปลี่ยนระบบสีเป็น Warm Earth-Tone &amp; Brown Ink, ปรับโลโก้เต็มกรอบ และเพิ่มสารบรรณปุ่มในคู่มือระบบ
+                    <strong className="text-[#b4531a]">Version 1.1.0 (Current)</strong>: เพิ่มระบบ Interactive Zoom &amp; Pan บนโหมด FULL MAP (ล้อเมาส์ซูม 100%–600%, คลิกลากเลื่อนผัง, ปุ่ม +, −, RESET), กล้องคงตำแหน่งไม่ดีดกลับเมื่อเล่น Step, คำนวณพิกัดชดเชย Letterbox แม่นยำ
+                  </div>
+                  <div className="border-l-2 border-[#a68664] pl-3">
+                    <strong className="text-[#7a5a40]">Version 1.0.0</strong>: ปรับจุดสีสถานะใหม่ 6 สี (DVM ฟ้า, Sideflow ม่วง, Alarm ส้ม, Pet &amp; Owner, Staff, System), ปรับขนาดและชนิดฟอนต์เทียบเท่า Protocol Explorer, ฝังฟอนต์ Iosevka + IBM Plex Sans Thai Looped, เปลี่ยนระบบสีเป็น Warm Earth-Tone &amp; Brown Ink, ปรับโลโก้เต็มกรอบ และเพิ่มสารบรรณปุ่มในคู่มือระบบ
                   </div>
                   <div className="border-l-2 border-[#a68664] pl-3">
                     <strong className="text-[#7a5a40]">Version 0.5.0</strong>: เพิ่มโมดูล Lightbox Modal ขยายภาพเต็มจอ, ผนวกภาพวาด Minimalist Line-Art 17 ภาพ และผังเชื่อมต่อ KAHIS EMR Wireframe 7 หน้าจอ

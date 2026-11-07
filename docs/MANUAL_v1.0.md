@@ -58,14 +58,19 @@
 | **Reset** | `↺` | รีเซ็ตวงจรการจำลองทั้งหมด | เริ่มต้นใหม่ที่ขั้นตอนที่ 1 และหยุดเล่นอัตโนมัติ | `R` (Key R) |
 | **Table Rows** | แถวที่ 1 - 9 | รายการประวัติเหตุการณ์ (Time, Actor, Module, Code) | คลิกเพื่อกระโดดไปยังขั้นตอนและสถานีนั้นทันที | - |
 
-### 3.2 สวิตช์มุมมอง Canvas (View Switcher ตรงกลาง)
-| ปุ่มมุมมอง | ข้อความ | ความหมายและหน้าที่ | การแสดงผลที่ได้รับ (Action) |
+### 3.2 สวิตช์มุมมอง Canvas และระบบกล้อง (View Switcher & Camera Controls ตรงกลาง)
+| ปุ่ม / องค์ประกอบ | สัญลักษณ์ / ข้อความ | ความหมายและหน้าที่ | การแสดงผลที่ได้รับ (Action) |
 | :--- | :---: | :--- | :--- |
-| **Flow Map View** | `FLOW MAP` | แผนผังสถานี 3D Isometric SVG | แสดงแท่น 5 สถานี, ทางประไฟวิ่ง, และลูกแก้วลำแสงดาวตก |
+| **Flow Map View** | `FLOW MAP` | แผนผังสถานี 13 จุดและเส้นทาง Multi-Stream | แสดงผัง Isometric 13 สถานี, เส้นทางประไฟวิ่ง, จุด Pet & Owner และแอนิเมชัน Packet |
 | **UI & Scene View** | `UI & SCENE` | คลังภาพประกอบ 1:1 Vector และหน้าจอ EMR | แสดงภาพวาดคลินิกจริงคู่กับพิมพ์เขียว Wireframe ความละเอียดสูง |
-| **Sequence View** | `SEQUENCE` | แผนภาพกระบวนการปฏิสัมพันธ์แบบ Swimlane | แสดงไทม์ไลน์ตามลำดับเวลาของการส่งต่องานระหว่างบทบาท |
+| **Step Zoom Mode** | `STEP ZOOM` | โหมดกล้องซูมเจาะจงขั้นตอน (Auto Camera) | กล้องเลื่อนและซูมติดตามสถานีที่กำลังเกิด Action โดยอัตโนมัติ (Isolated Focused Nodes) |
+| **Full Map Mode** | `FULL MAP` | โหมดแผนผังภาพรวม 100% พร้อม Interactive Zoom & Pan | แสดงผังครบ 13 สถานีพร้อมกรอบโซน โดยเปิดให้ผู้ใช้ ซูมและเลื่อน (Pan) ได้อย่างอิสระ |
+| **Zoom In / Out** | `+` / `−` | ปุ่มปรับสเกลขยายแผนผังในโหมด FULL MAP | ซูมเข้า/ออกทีละระดับรอบจุดกึ่งกลางหน้าจอ (ขอบเขต 100% - 600%) |
+| **Reset View** | `RESET` | รีเซ็ตมุมกล้องแผนผังภาพรวม | ดีดมุมมองกลับเป็นแผนผังเต็มโรงพยาบาล 100% (ViewBox: 0 0 1150 565) |
+| **Mouse Wheel Zoom** | ล้อเมาส์ (Scroll) | ซูมเข้า/ออก ณ ตำแหน่งเคอร์เซอร์เมาส์ (Cursor-centered) | หมุนล้อขึ้นเพื่อซูมเข้า / ลงเพื่อซูมออก ณ จุดที่เมาส์ชี้อยู่ โดยไม่เลื่อนหน้าเว็บ |
+| **Click & Drag Pan** | คลิกลากเมาส์ซ้าย | ลากเลื่อนแผนผังสำรวจจุดต่างๆ (Pan) | คลิกลากบนพื้นหลังเพื่อเลื่อนดูแผนกต่างๆ เคอร์เซอร์เปลี่ยนเป็น grab/grabbing พร้อมขอบเขตจำกัดไม่หลุดกรอบ |
 | **Canvas Step Nav** | `‹` / `›` | ปุ่มเลื่อนขั้นตอนบนหัว Canvas | ขยับไปยังขั้นตอนก่อนหน้าหรือถัดไปทันที |
-| **Asset Preview Card** | `ขยายภาพ` (↗) | หน้าต่างลอยย่อส่วนของภาพประจำขั้นตอน | คลิกเพื่อเปิดดูภาพเต็มจอแบบ Full-screen Lightbox Modal |
+| **Inspect UI & Scene CTA** | `ดูหน้าจอตรวจรักษา (STEP X)` ➔ | ทางลัดเข้าสู่หน้าจอ EMR Wireframe และฉากจำลอง | สลับเข้าสู่โหมด UI & SCENE เพื่อเจาะลึกหน้าจอโปรแกรมทันทีโดยไม่เด้ง Modal บัง |
 | **Wireframe Tabs** | `EXAM CARD`, `PLAN`... | แท็บสลับหน้าจอพิมพ์เขียวย่อย | แสดงหน้าจอ EMR ย่อยที่มีมากกว่า 1 แบบในขั้นตอนนั้น (เช่น ขั้น 7) |
 
 ### 3.3 แผงด้านข้างและลิ้นชักข้อมูล (Sidebar & Overview)
@@ -131,11 +136,29 @@
   font-family: "Iosevka", "IBM Plex Sans Thai Looped", ui-monospace, monospace;
   ```
 
+### 6.4 ระบบกล้องอัจฉริยะและการซูมแผนผังแบบมีปฏิสัมพันธ์ (Dynamic SVG Camera Viewport, Wheel Zoom & Drag-to-Pan)
+- **สถาปัตยกรรมกล้องผ่าน SVG `viewBox`**: ควบคุมมุมมองผ่าน State พิกัดกล่อง `camBox = [x, y, width, height]` ขนาดพื้นฐาน $1150 \times 565$ อัตราส่วน $1150 / 565 \approx 2.035$
+- **โหมด STEP ZOOM (Auto-Guided Tracking)**:
+  - คำนวณขอบเขตล้อมรอบสถานีเป้าหมาย (`computeStepCameraBox`) ในแต่ละขั้นตอน
+  - แอนิเมชันกล้องเคลื่อนที่แบบ Cubic Ease-out ($t = 1 - (1-t)^3$) เป็นเวลา 620ms
+  - ซ่อนสถานีและเส้นทางที่ไม่เกี่ยวข้องเพื่อลด Cognitive Load ของผู้ใช้งาน
+- **โหมด FULL MAP (Interactive Free Exploration)**:
+  - แสดงสถานีครบ 13 จุดพร้อมกรอบสีจัดกลุ่มโซน (ER, Special Clinic/Surgery, Support Zone, Pharmacy & Rx)
+  - **Cursor-Centered Wheel Zoom**: แปลงพิกัด Client Pixel สู่พิกัดแผนผังโลก SVG โดยชดเชย Aspect Ratio Letterbox (`preserveAspectRatio="xMidYMid meet"`) ทำให้ตำแหน่งจุดใต้เมาส์คงที่ขณะซูม
+  - **Drag-to-Pan with Bounding Clamp**: คลิกลากเมาส์เพื่อเลื่อนแผนผัง โดยแปลงระยะทางลากตามสเกลจริง พร้อมระบบ `clampCamBox` ป้องกันไม่ให้มุมมองหลุดออกจากขอบเขต $X \in [-45, 1160]$, $Y \in [0, 565]$ และจำกัดระดับการซูมที่ 100%–600%
+  - **Camera State Persistence**: ล็อกตำแหน่งกล้องไว้ไม่ให้กระตุกหรือดีดกลับเป็นค่าเริ่มต้นเมื่อกด Play/Step ถัดไป ช่วยให้ตรวจสอบสถานะขั้นตอนที่กำลังรันอยู่ ณ บริเวณที่ซูมเจาะลึกได้อย่างต่อเนื่อง
+  - **Gesture Conflict Prevention**: ยกเลิกแอนิเมชันกล้องอัตโนมัติทันทีที่ผู้ใช้สัมผัสหรือสั่งการ (Cancel RAF) และใช้ Native Non-passive Wheel Listener ป้องกันการเลื่อนหลุดของหน้าเว็บหลัก
+
 ---
 
 ## 7. ประวัติการปรับปรุงและวิวัฒนาการระบบ (Change History & Evolution)
 
-- **v1.0.0 (Current Release)**:
+- **v1.1.0 (Interactive Camera & Full Map Zoom/Pan - Current Release)**:
+  - เพิ่มระบบ Interactive Zoom & Pan ในโหมด **FULL MAP** รองรับล้อเมาส์ซูมรอบเคอร์เซอร์ (100%–600%) และคลิกลากแพน (Drag-to-Pan)
+  - เพิ่มปุ่มเครื่องมือควบคุมกล้อง `+`, `−`, `RESET` พร้อมแถบแนะนำคำสั่งบน Canvas Header
+  - เพิ่มระบบ Camera State Persistence แยกอิสระระหว่างโหมด STEP ZOOM และ FULL MAP ไม่ดีดกลับเมื่อเปลี่ยนขั้นตอน
+  - ปรับความแม่นยำในการคำนวณ SVG Viewport Metric ชดเชย Letterbox Offset และจำกัดขอบเขต Bounding Clamp ไม่ให้หลุดกรอบ
+- **v1.0.0**:
   - ปรับระบบจุดสีแสดงบทบาทใหม่ 6 สี (DVM ฟ้า, Sideflow ม่วง, Alarm ส้ม, Pet & Owner, Staff, System)
   - ปรับสเกลขนาดและชนิดฟอนต์เทียบเท่า Protocol Explorer 100%
   - ฝังฟอนต์ `Iosevka` (woff2) และ `IBM Plex Sans Thai Looped`

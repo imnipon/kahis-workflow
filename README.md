@@ -52,7 +52,10 @@
 1. **Pure SVG 3D Isometric Projection**:
    - คำนวณพิกัดสถานี 5 จุดในโรงพยาบาล (Entrance, Registration, Waiting Hall, Exam Room 10, Pharmacy/Cashier)
    - วาดรูปทรงเรขาคณิต 3 มิติ (Top Face, Left Face, Right Face, Drop Shadow) ด้วย Pure SVG Polygon โดยไม่ต้องพึ่งพา WebGL Library หนักๆ
-2. **Traveling Comet Token & Active Lane Flow**:
+2. **Dynamic SVG Camera & Interactive Zoom/Pan**:
+   - สลับระหว่าง **STEP ZOOM** (ซูม/แพนโฟกัสสถานีเป้าหมายอัตโนมัติ) และ **FULL MAP** (แผนผังโรงพยาบาลครบ 13 จุดพร้อมกรอบโซน)
+   - รองรับ **Mouse Wheel Zoom** (100%–600% รอบตำแหน่งเคอร์เซอร์), **Click & Drag Pan** (ลากเลื่อนพร้อมระบบ Bounding Clamp), และปุ่มควบคุม `+`, `−`, `RESET`
+3. **Traveling Comet Token & Active Lane Flow**:
    - คำนวณพิกัดกึ่งกลางแบบไดนามิก พร้อมหางแสงดาวตก 3 ระดับความโปร่งแสง และแอนิเมชันเส้นประไฟวิ่ง `laneDash`
 3. **Dual Font Stack (Typography Parity)**:
    - ฟอนต์ **`Iosevka`** (Self-hosted woff2 6 น้ำหนัก) สำหรับตัวอักษรภาษาอังกฤษ ตัวเลข และรหัสอ้างอิง
@@ -66,7 +69,12 @@
 
 ## 📜 Version History (ประวัติการปรับปรุงระบบ)
 
-- **v1.0.0 (Current Release)**:
+- **v1.1.0 (Current Release)**:
+  - เพิ่มระบบ Interactive Zoom & Pan ในโหมด **FULL MAP** รองรับล้อเมาส์ซูมรอบเคอร์เซอร์ (100%–600%) และคลิกลากแพน (Drag-to-Pan)
+  - เพิ่มปุ่มควบคุมกล้อง `+`, `−`, `RESET` พร้อมข้อความแนะนำการใช้งานบน Canvas Header
+  - เพิ่มระบบ Camera State Persistence แยกอิสระระหว่างโหมด STEP ZOOM และ FULL MAP ไม่ดีดกลับเมื่อเปลี่ยนขั้นตอน
+  - ปรับปรุงการคำนวณ SVG Viewport Metric ชดเชย Letterbox Offset และ Bounding Clamp แม่นยำ
+- **v1.0.0**:
   - ปรับขนาดและชนิดฟอนต์เทียบเท่า Protocol Explorer 100%
   - ฝังฟอนต์ `Iosevka` (woff2) และ `IBM Plex Sans Thai Looped`
   - ปรับระบบสีเป็น Warm Earth-Tone & Brown Ink ทั่วทั้งระบบ

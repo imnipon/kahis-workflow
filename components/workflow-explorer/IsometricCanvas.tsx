@@ -299,6 +299,37 @@ function computeStepCameraBox(
   return [x, y, boxW, boxH];
 }
 
+// ---- Manual camera (FULL MAP zoom & pan) helpers ----
+const MIN_BOX_W = 190; // ~600% max zoom
+const MAX_BOX_W = 1150; // full map
+const WHEEL_SENSITIVITY = 0.0015;
+
+type CamBox = [number, number, number, number];
+
+function clampCamBox(x: number, y: number, w: number): CamBox {
+  const bw = Math.max(MIN_BOX_W, Math.min(MAX_BOX_W, w));
+  const bh = bw / ASPECT;
+  const cx = Math.max(-45, Math.min(Math.max(-45, 1160 - bw), x));
+  const cy = Math.max(0, Math.min(Math.max(0, 565 - bh), y));
+  return [cx, cy, bw, bh];
+}
+
+// Zoom keeping the world point (px, py) fixed on screen
+function zoomCamBox(box: CamBox, factor: number, px: number, py: number): CamBox {
+  const newW = Math.max(MIN_BOX_W, Math.min(MAX_BOX_W, box[2] / factor));
+  const ratio = newW / box[2];
+  return clampCamBox(px - (px - box[0]) * ratio, py - (py - box[1]) * ratio, newW);
+}
+
+// SVG uses preserveAspectRatio="xMidYMid meet": compute px -> world unit scale & letterbox offset
+function getSvgMetrics(svg: SVGSVGElement, box: CamBox) {
+  const rect = svg.getBoundingClientRect();
+  const scale = Math.min(rect.width / box[2], rect.height / box[3]) || 1;
+  const offX = (rect.width - box[2] * scale) / 2;
+  const offY = (rect.height - box[3] * scale) / 2;
+  return { rect, scale, offX, offY };
+}
+
 const TONE_PALETTE: Record<
   RoleTone,
   { dot: string; bg: string; border: string; text: string; badgeBg: string }
@@ -376,10 +407,38 @@ export default function IsometricCanvas({
   const [step3CustomStatus, setStep3CustomStatus] = useState<string>("");
   const rafRef = useRef<number | null>(null);
 
-  // Smooth Camera Zoom & Pan interpolation when step or isAutoZoom changes
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const camRafRef = useRef<number | null>(null);
+  const dragRef = useRef<{
+    startClientX: number;
+    startClientY: number;
+    box: CamBox;
+    scale: number;
+  } | null>(null);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+
+  const cancelCamAnimation = () => {
+    if (camRafRef.current !== null) {
+      cancelAnimationFrame(camRafRef.current);
+      camRafRef.current = null;
+    }
+  };
+
+  const applyCamBox = (box: CamBox) => {
+    camBoxRef.current = box;
+    setCamBox(box);
+  };
+
+  // In STEP ZOOM mode the camera follows the step. In FULL MAP mode the camera is user-controlled,
+  // so step changes must NOT re-run the camera animation (it would reset the user's zoom/pan).
+  const camFollowStep: WorkflowStep | null = isAutoZoom ? currentStep : null;
+
+  // Smooth Camera Zoom & Pan interpolation when step (STEP ZOOM) or camera mode changes
   useEffect(() => {
     const startBox: [number, number, number, number] = [...camBoxRef.current];
-    const targetBox = computeStepCameraBox(currentStep, isAutoZoom);
+    const targetBox = camFollowStep
+      ? computeStepCameraBox(camFollowStep, true)
+      : FULL_VIEWBOX;
     let camStart: number | null = null;
     let camRaf: number | null = null;
     const camDuration = 620;
@@ -398,14 +457,85 @@ export default function IsometricCanvas({
       setCamBox(nextBox);
       if (t < 1) {
         camRaf = requestAnimationFrame(animateCamera);
+        camRafRef.current = camRaf;
+      } else {
+        camRafRef.current = null;
       }
     };
 
     camRaf = requestAnimationFrame(animateCamera);
+    camRafRef.current = camRaf;
     return () => {
       if (camRaf !== null) cancelAnimationFrame(camRaf);
+      if (camRafRef.current === camRaf) camRafRef.current = null;
     };
-  }, [currentStep, isAutoZoom]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [camFollowStep]);
+
+  // Mouse wheel zoom (FULL MAP only). Native non-passive listener so we can preventDefault page scroll.
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg || viewMode !== "flow" || isAutoZoom) return;
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      cancelCamAnimation();
+      const box = camBoxRef.current;
+      const { rect, scale, offX, offY } = getSvgMetrics(svg, box);
+      const px = box[0] + (e.clientX - rect.left - offX) / scale;
+      const py = box[1] + (e.clientY - rect.top - offY) / scale;
+      const factor = Math.exp(-e.deltaY * WHEEL_SENSITIVITY);
+      applyCamBox(zoomCamBox(box, factor, px, py));
+    };
+
+    svg.addEventListener("wheel", onWheel, { passive: false });
+    return () => svg.removeEventListener("wheel", onWheel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, isAutoZoom]);
+
+  const handlePointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (isAutoZoom || e.button !== 0 || !svgRef.current) return;
+    cancelCamAnimation();
+    const box = camBoxRef.current;
+    const { scale } = getSvgMetrics(svgRef.current, box);
+    dragRef.current = {
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      box: [...box],
+      scale
+    };
+    svgRef.current.setPointerCapture(e.pointerId);
+    setIsDragging(true);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    const d = dragRef.current;
+    if (!d) return;
+    const dx = (e.clientX - d.startClientX) / d.scale;
+    const dy = (e.clientY - d.startClientY) / d.scale;
+    applyCamBox(clampCamBox(d.box[0] - dx, d.box[1] - dy, d.box[2]));
+  };
+
+  const handlePointerEnd = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (!dragRef.current) return;
+    dragRef.current = null;
+    setIsDragging(false);
+    if (svgRef.current?.hasPointerCapture(e.pointerId)) {
+      svgRef.current.releasePointerCapture(e.pointerId);
+    }
+  };
+
+  // Button zoom around the center of the current view
+  const handleZoomButton = (factor: number) => {
+    cancelCamAnimation();
+    const box = camBoxRef.current;
+    applyCamBox(zoomCamBox(box, factor, box[0] + box[2] / 2, box[1] + box[3] / 2));
+  };
+
+  const handleResetFullMap = () => {
+    cancelCamAnimation();
+    applyCamBox([...FULL_VIEWBOX]);
+  };
 
   // Reset wireframe tab when step changes
   useEffect(() => {
@@ -522,7 +652,7 @@ export default function IsometricCanvas({
         ...currentStep.stationNotes.map((n) => n.nodeId)
       ]);
 
-  const currentZoomPct = Math.round((1140 / camBox[2]) * 100);
+  const currentZoomPct = Math.round((MAX_BOX_W / camBox[2]) * 100);
 
   return (
     <div className="pe-sim-container w-full h-full relative flex flex-col">
@@ -586,6 +716,37 @@ export default function IsometricCanvas({
                 <Maximize2 className="w-3 h-3" />
                 <span>FULL MAP</span>
               </button>
+              {!isAutoZoom && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleZoomButton(1 / 1.35)}
+                    className="px-1.5 py-0.5 rounded-xs border border-[#d8c6aa] bg-[#fcf8ee] text-[#4a2e1b] hover:bg-[#efe4ca] cursor-pointer"
+                    title="ซูมออก"
+                  >
+                    <ZoomOut className="w-3 h-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleZoomButton(1.35)}
+                    className="px-1.5 py-0.5 rounded-xs border border-[#d8c6aa] bg-[#fcf8ee] text-[#4a2e1b] hover:bg-[#efe4ca] cursor-pointer"
+                    title="ซูมเข้า"
+                  >
+                    <ZoomIn className="w-3 h-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResetFullMap}
+                    className="px-2 py-0.5 text-[11px] font-extrabold rounded-xs border border-[#d8c6aa] bg-[#fcf8ee] text-[#4a2e1b] hover:bg-[#efe4ca] cursor-pointer"
+                    title="รีเซ็ตมุมมองเป็นแผนผังเต็ม 100%"
+                  >
+                    RESET
+                  </button>
+                  <span className="text-[10.5px] font-bold text-[#7a5a40] ml-1">
+                    ล้อเมาส์ = ซูม · ลาก = เลื่อน
+                  </span>
+                </>
+              )}
             </div>
           </div>
 
@@ -595,8 +756,17 @@ export default function IsometricCanvas({
               viewBox={`${camBox[0].toFixed(1)} ${camBox[1].toFixed(1)} ${camBox[2].toFixed(
                 1
               )} ${camBox[3].toFixed(1)}`}
+              ref={svgRef}
               className="w-full h-full select-none"
-              style={{ maxHeight: "100%" }}
+              style={{
+                maxHeight: "100%",
+                touchAction: isAutoZoom ? "auto" : "none",
+                cursor: isAutoZoom ? "default" : isDragging ? "grabbing" : "grab"
+              }}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerEnd}
+              onPointerCancel={handlePointerEnd}
             >
             <defs>
               {/* Arrowhead markers per stream */}
