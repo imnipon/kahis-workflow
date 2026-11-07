@@ -37,6 +37,7 @@ export default function ExplorerShell() {
   }, []);
   const [expandedWorkflowId, setExpandedWorkflowId] = useState<string | null>(WORKFLOWS[0].id);
   const [currentStepIdx, setCurrentStepIdx] = useState<number>(0);
+  const [animKey, setAnimKey] = useState<number>(0);
   const [viewMode, setViewMode] = useState<"flow" | "scene">("flow");
   const [overviewTab, setOverviewTab] = useState<"step" | "overview">("step");
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -51,22 +52,30 @@ export default function ExplorerShell() {
   // Controls
   const handleNextStep = useCallback(() => {
     setCurrentStepIdx((prev) => {
-      if (prev < totalSteps - 1) return prev + 1;
+      if (prev < totalSteps - 1) {
+        setAnimKey((k) => k + 1);
+        return prev + 1;
+      }
       setIsPlaying(false);
       return prev;
     });
   }, [totalSteps]);
 
   const handlePrevStep = useCallback(() => {
-    setCurrentStepIdx((prev) => Math.max(0, prev - 1));
+    setCurrentStepIdx((prev) => {
+      setAnimKey((k) => k + 1);
+      return Math.max(0, prev - 1);
+    });
   }, []);
 
   const handleReset = useCallback(() => {
     setIsPlaying(false);
     setCurrentStepIdx(0);
+    setAnimKey((k) => k + 1);
   }, []);
 
   const handleTogglePlay = useCallback(() => {
+    setAnimKey((k) => k + 1);
     if (currentStepIdx >= totalSteps - 1) {
       setCurrentStepIdx(0);
       setIsPlaying(true);
@@ -86,10 +95,12 @@ export default function ExplorerShell() {
   // Playback Timer
   useEffect(() => {
     if (!isPlaying) return;
-    const intervalMs = 2800 / playbackSpeed;
+    const isStep3 = activeWorkflow.steps[currentStepIdx]?.id === 3;
+    const intervalMs = (isStep3 ? 4600 : 2800) / playbackSpeed;
     const timer = setInterval(() => {
       setCurrentStepIdx((prev) => {
         if (prev < totalSteps - 1) {
+          setAnimKey((k) => k + 1);
           return prev + 1;
         } else {
           setIsPlaying(false);
@@ -99,7 +110,7 @@ export default function ExplorerShell() {
     }, intervalMs);
 
     return () => clearInterval(timer);
-  }, [isPlaying, playbackSpeed, totalSteps]);
+  }, [isPlaying, playbackSpeed, totalSteps, currentStepIdx, activeWorkflow]);
 
   // Keyboard Shortcuts (Space, Left, Right, R, M)
   useEffect(() => {
@@ -310,6 +321,7 @@ export default function ExplorerShell() {
                                   setIsPlaying(false);
                                   if (!isSelectedWf) setActiveWorkflow(wf);
                                   setCurrentStepIdx(idx);
+                                  setAnimKey((k) => k + 1);
                                 }}
                                 className={`pe-step-item ${isActive ? "is-active" : ""}`}
                               >
@@ -417,7 +429,11 @@ export default function ExplorerShell() {
             currentStep={currentStep}
             viewMode={viewMode}
             playbackSpeed={playbackSpeed}
-            onSelectStep={(stepId) => setCurrentStepIdx(stepId - 1)}
+            animKey={animKey}
+            onSelectStep={(stepId) => {
+              setCurrentStepIdx(stepId - 1);
+              setAnimKey((k) => k + 1);
+            }}
             onSwitchView={(mode) => setViewMode(mode)}
           />
         </section>
@@ -620,6 +636,7 @@ export default function ExplorerShell() {
                       onClick={() => {
                         setIsPlaying(false);
                         setCurrentStepIdx(idx);
+                        setAnimKey((k) => k + 1);
                       }}
                       className={`cursor-pointer transition ${isActive ? "is-active" : ""}`}
                     >

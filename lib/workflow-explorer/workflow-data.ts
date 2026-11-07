@@ -670,7 +670,7 @@ export const WORKFLOWS: WorkflowItem[] = [
               { k: 'ROOM', v: 'Zone A - No. 1' }
             ],
             stopOffsetX: 0,
-            stopOffsetY: 78
+            stopOffsetY: 102
           },
           {
             id: 'pkt-step3-owner',

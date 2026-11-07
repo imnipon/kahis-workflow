@@ -24,6 +24,7 @@ interface IsometricCanvasProps {
   currentStep: WorkflowStep;
   viewMode: "flow" | "scene";
   playbackSpeed?: number;
+  animKey?: number;
   onSelectStep?: (stepId: number) => void;
   onSwitchView?: (mode: "flow" | "scene") => void;
 }
@@ -169,6 +170,7 @@ export default function IsometricCanvas({
   currentStep,
   viewMode,
   playbackSpeed = 1,
+  animKey = 0,
   onSwitchView
 }: IsometricCanvasProps) {
   const [selectedWireframeIdx, setSelectedWireframeIdx] = useState(0);
@@ -183,6 +185,10 @@ export default function IsometricCanvas({
   // Animation progress (0 -> 1) driven by requestAnimationFrame (one-shot per step, stops at destination)
   const [animProgress, setAnimProgress] = useState<number>(0);
   const [packetProgress, setPacketProgress] = useState<number>(0);
+  const [step3PacketVisible, setStep3PacketVisible] = useState<boolean>(false);
+  const [step3GreenLaneActive, setStep3GreenLaneActive] = useState<boolean>(false);
+  const [step3PulseNode, setStep3PulseNode] = useState<string>("examGeneral");
+  const [step3CustomStatus, setStep3CustomStatus] = useState<string>("");
   const rafRef = useRef<number | null>(null);
 
   // Smooth Camera Zoom & Pan interpolation when step or isAutoZoom changes
@@ -225,24 +231,84 @@ export default function IsometricCanvas({
     }
   }, [currentStep.id, currentStep.uiWireframes.length, sceneLayout]);
 
-  // Smooth RAF one-shot animation for Persistent Pet & Owner + Moving Packets (stops at destination)
+  // Smooth RAF animation for Persistent Pet & Owner + Moving Packets
   useEffect(() => {
     let startTime: number | null = null;
+    const isStep3 = currentStep.id === 3;
+
+    // Standard step durations
     const transitionDuration = 1150 / playbackSpeed;
     const packetDuration = 1250 / playbackSpeed;
+
+    // Step 3 phased timeline durations (scaled by playbackSpeed)
+    const tCallQueue = 950 / playbackSpeed;
+    const tSignalArrive = 2150 / playbackSpeed;
+    const tPetStart = 2600 / playbackSpeed;
+    const tPetArrive = 3850 / playbackSpeed;
+    const tStep3Total = 4200 / playbackSpeed;
 
     const tick = (timestamp: number) => {
       if (startTime === null) startTime = timestamp;
       const elapsed = timestamp - startTime;
 
-      const tMove = Math.min(1, elapsed / transitionDuration);
-      setAnimProgress(easeInOutCubic(tMove));
+      if (isStep3) {
+        if (elapsed < tCallQueue) {
+          // 1. Show Pet at waiting hall, system queue display, DVM call queue (DVM pulses)
+          setAnimProgress(0);
+          setPacketProgress(0);
+          setStep3PacketVisible(false);
+          setStep3GreenLaneActive(false);
+          setStep3PulseNode("examGeneral");
+          setStep3CustomStatus("นั่งรอเรียกคิวที่ Waiting Hall (คิว WA001) · สัตวแพทย์กดเรียกคิว");
+        } else if (elapsed < tSignalArrive) {
+          // 2. Green arrow & system call moves from exam room to waiting hall
+          setAnimProgress(0);
+          const frac = Math.min(1, (elapsed - tCallQueue) / (tSignalArrive - tCallQueue));
+          setPacketProgress(easeInOutCubic(frac));
+          setStep3PacketVisible(true);
+          setStep3GreenLaneActive(true);
+          setStep3PulseNode(frac > 0.6 ? "waitingHall" : "examGeneral");
+          setStep3CustomStatus("ระบบส่งสัญญาณเรียกคิวและเสียงประกาศ WA001 -> โถงพักคอย");
+        } else if (elapsed < tPetStart) {
+          // 2. Pause at waiting hall: TV screen updated, voice announced (Waiting Hall pulses)
+          setAnimProgress(0);
+          setPacketProgress(1);
+          setStep3PacketVisible(true);
+          setStep3GreenLaneActive(true);
+          setStep3PulseNode("waitingHall");
+          setStep3CustomStatus("จอ TV อัปเดตคิว WA001 เข้าตรวจ Zone A ห้อง 1 · เจ้าของเตรียมพาสัตว์เข้าห้อง");
+        } else if (elapsed < tPetArrive) {
+          // 3. Pet & Owner moves to exam room; when reaching, system call disappears
+          const petFrac = Math.min(1, (elapsed - tPetStart) / (tPetArrive - tPetStart));
+          setAnimProgress(easeInOutCubic(petFrac));
+          setPacketProgress(1);
+          setStep3PacketVisible(petFrac < 0.88);
+          setStep3GreenLaneActive(petFrac < 0.7);
+          setStep3PulseNode(petFrac > 0.65 ? "examGeneral" : "waitingHall");
+          setStep3CustomStatus("เดินเข้าห้องตรวจ Exam Room (General · Zone A ห้อง 1)");
+        } else {
+          // 3. Reached exam room: system call gone, exam room pulses
+          setAnimProgress(1);
+          setPacketProgress(1);
+          setStep3PacketVisible(false);
+          setStep3GreenLaneActive(false);
+          setStep3PulseNode("examGeneral");
+          setStep3CustomStatus("เข้าห้องตรวจเรียบร้อย (Zone A ห้อง 1) · สัตวแพทย์เริ่มตรวจ");
+        }
 
-      const tPkt = Math.min(1, elapsed / packetDuration);
-      setPacketProgress(easeInOutCubic(tPkt));
+        if (elapsed < tStep3Total) {
+          rafRef.current = requestAnimationFrame(tick);
+        }
+      } else {
+        const tMove = Math.min(1, elapsed / transitionDuration);
+        setAnimProgress(easeInOutCubic(tMove));
 
-      if (tMove < 1 || tPkt < 1) {
-        rafRef.current = requestAnimationFrame(tick);
+        const tPkt = Math.min(1, elapsed / packetDuration);
+        setPacketProgress(easeInOutCubic(tPkt));
+
+        if (tMove < 1 || tPkt < 1) {
+          rafRef.current = requestAnimationFrame(tick);
+        }
       }
     };
 
@@ -250,7 +316,7 @@ export default function IsometricCanvas({
     return () => {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
-  }, [currentStep.id, playbackSpeed]);
+  }, [currentStep.id, playbackSpeed, animKey]);
 
   // Persistent Pet & Owner interpolated coordinates
   const ownerFrom = STATIONS[currentStep.petOwner.fromNode] || STATIONS.entrance;
@@ -261,13 +327,15 @@ export default function IsometricCanvas({
   // Focused nodes for the active step
   const stepFocusNodeIds = getStepFocusNodeIds(currentStep);
 
-  // Determine which nodes have active pulses in this step
-  const pulsedNodeIds = new Set<string>([
-    currentStep.fromNode,
-    currentStep.toNode,
-    currentStep.petOwner.toNode,
-    ...currentStep.stationNotes.map((n) => n.nodeId)
-  ]);
+  // Determine which nodes have active pulses in this step (coordinated with action)
+  const pulsedNodeIds = currentStep.id === 3
+    ? new Set<string>([step3PulseNode])
+    : new Set<string>([
+        currentStep.fromNode,
+        currentStep.toNode,
+        currentStep.petOwner.toNode,
+        ...currentStep.stationNotes.map((n) => n.nodeId)
+      ]);
 
   const currentZoomPct = Math.round((1140 / camBox[2]) * 100);
 
@@ -486,9 +554,18 @@ export default function IsometricCanvas({
                   (stepFocusNodeIds.has(lane.from) && stepFocusNodeIds.has(lane.to))
                 );
               }).map((lane) => {
-                const isActive =
+                let isActive =
                   currentStep.activeLanes.includes(lane.id) ||
                   lane.id === currentStep.laneId;
+
+                // Step 3: green system lane activates only when system signal is sent in Phase 2
+                if (currentStep.id === 3 && lane.stream === "system") {
+                  isActive = step3GreenLaneActive;
+                }
+                // Step 3: owner walkway lane activates when pet starts walking
+                if (currentStep.id === 3 && lane.stream === "owner") {
+                  isActive = animProgress > 0.02;
+                }
 
                 let strokeColor = "#c6b193";
                 let dashArray = "4 4";
@@ -514,6 +591,13 @@ export default function IsometricCanvas({
                   marker = isActive ? "url(#arrow-system)" : "url(#arrow-muted)";
                 }
 
+                const laneOpacity =
+                  currentStep.id === 3 && lane.stream === "system" && !step3GreenLaneActive
+                    ? 0.08
+                    : isActive
+                    ? 1
+                    : 0.55;
+
                 return (
                   <g key={lane.id}>
                     {isActive && (
@@ -532,7 +616,7 @@ export default function IsometricCanvas({
                       strokeWidth={strokeW}
                       strokeDasharray={dashArray}
                       markerEnd={marker}
-                      opacity={isActive ? 1 : 0.55}
+                      opacity={laneOpacity}
                       style={{
                         animation:
                           isActive && dashArray !== "none"
@@ -807,7 +891,11 @@ export default function IsometricCanvas({
                 ================================================================= */}
             <g className="packet-layer">
               {currentStep.packets
-                .filter((pkt) => pkt.stream !== "owner")
+                .filter((pkt) => {
+                  if (pkt.stream === "owner") return false;
+                  if (currentStep.id === 3 && !step3PacketVisible) return false;
+                  return true;
+                })
                 .map((pkt) => {
                   const fromSt = STATIONS[pkt.fromNode];
                   const toSt = STATIONS[pkt.toNode];
@@ -994,7 +1082,10 @@ export default function IsometricCanvas({
               <div className="flex items-center gap-2 text-[12.5px] font-bold text-[#331e10] truncate">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#8c5828] inline-block shrink-0" />
                 <span className="truncate">
-                  Pet &amp; Owner: {currentStep.petOwner.statusLabel}
+                  Pet &amp; Owner:{" "}
+                  {currentStep.id === 3 && step3CustomStatus
+                    ? step3CustomStatus
+                    : currentStep.petOwner.statusLabel}
                 </span>
               </div>
             </div>
