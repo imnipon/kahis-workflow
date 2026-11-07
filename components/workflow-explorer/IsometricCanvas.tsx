@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   STATIONS,
@@ -8,7 +8,7 @@ import {
   WorkflowStep,
   UIWireframeItem
 } from "@/lib/workflow-explorer/workflow-data";
-import { Maximize2, Minimize2, Eye, Sparkles, X } from "lucide-react";
+import { Maximize2, Eye, Sparkles, X } from "lucide-react";
 
 interface IsometricCanvasProps {
   currentStep: WorkflowStep;
@@ -76,20 +76,20 @@ export default function IsometricCanvas({
                 <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--active)" />
               </marker>
 
-              {/* Linear Gradients for Isometric Station Faces */}
+              {/* Linear Gradients for Isometric Station Faces (Warm Earth Tone) */}
               <linearGradient id="iso-top" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#f4f8ff" />
-                <stop offset="100%" stopColor="#e2ebfc" />
+                <stop offset="0%" stopColor="#fbf4e3" />
+                <stop offset="100%" stopColor="#ead8ba" />
               </linearGradient>
 
               <linearGradient id="iso-top-active" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#e0edff" />
-                <stop offset="100%" stopColor="#c7dcfb" />
+                <stop offset="0%" stopColor="#f9e6c3" />
+                <stop offset="100%" stopColor="#e5be86" />
               </linearGradient>
             </defs>
 
             {/* Background Grid Accent Lines */}
-            <g stroke="#e5edfa" strokeWidth="0.8" opacity="0.6">
+            <g stroke="#e4d5bc" strokeWidth="0.9" opacity="0.7">
               <line x1="80" y1="120" x2="880" y2="120" strokeDasharray="4 4" />
               <line x1="80" y1="240" x2="880" y2="240" strokeDasharray="4 4" />
               <line x1="80" y1="360" x2="880" y2="360" strokeDasharray="4 4" />
@@ -106,17 +106,17 @@ export default function IsometricCanvas({
                     <path
                       d={lane.d}
                       fill="none"
-                      stroke="#d0def8"
+                      stroke="#dfd0b6"
                       strokeWidth={isActive ? "4" : "2"}
-                      opacity="0.5"
+                      opacity="0.6"
                     />
                     {/* Animated or dashed foreground line */}
                     <path
                       d={lane.d}
                       fill="none"
                       stroke={isActive ? "var(--active)" : "var(--line)"}
-                      strokeWidth={isActive ? "2.5" : "1.5"}
-                      strokeDasharray={isActive ? "6 4" : "4 4"}
+                      strokeWidth={isActive ? "2.5" : "1.8"}
+                      strokeDasharray={isActive ? "6 4" : "5 4"}
                       markerEnd={isActive ? "url(#lane-arrow-active)" : "url(#lane-arrow)"}
                       style={{
                         animation: isActive ? "laneDash 1.2s linear infinite" : "none"
@@ -166,16 +166,18 @@ export default function IsometricCanvas({
                   key={st.id}
                   className="cursor-pointer transition-transform duration-300"
                   style={{
-                    filter: isCurrent ? "drop-shadow(0 4px 12px rgba(31, 95, 224, 0.25))" : "none"
+                    filter: isCurrent
+                      ? "drop-shadow(0 4px 12px rgba(180, 83, 26, 0.25))"
+                      : "none"
                   }}
                 >
                   {/* Cast shadow under station */}
-                  <polygon points={shadow} fill="rgba(11, 43, 134, 0.08)" />
+                  <polygon points={shadow} fill="rgba(51, 30, 16, 0.09)" />
 
                   {/* Left Face */}
                   <polygon
                     points={leftFace}
-                    fill={isCurrent ? "#9cbef2" : "#c4d8f6"}
+                    fill={isCurrent ? "#cfa068" : "#dec8a4"}
                     stroke="var(--line)"
                     strokeWidth="1.2"
                   />
@@ -183,7 +185,7 @@ export default function IsometricCanvas({
                   {/* Right Face */}
                   <polygon
                     points={rightFace}
-                    fill={isCurrent ? "#b7d3f8" : "#d8e6fa"}
+                    fill={isCurrent ? "#dfb888" : "#ead8ba"}
                     stroke="var(--line)"
                     strokeWidth="1.2"
                   />
@@ -198,23 +200,23 @@ export default function IsometricCanvas({
 
                   {/* Station Code Badge */}
                   <rect
-                    x={st.x - 30}
-                    y={st.y - h - 16}
-                    width="60"
-                    height="14"
+                    x={st.x - 36}
+                    y={st.y - h - 19}
+                    width="72"
+                    height="17"
                     rx="2"
-                    fill={isCurrent ? "var(--active)" : "#f0f5ff"}
+                    fill={isCurrent ? "var(--active)" : "#f3ead6"}
                     stroke={isCurrent ? "var(--active)" : "var(--line-mid)"}
                     strokeWidth="1"
                   />
                   <text
                     x={st.x}
-                    y={st.y - h - 6}
+                    y={st.y - h - 7}
                     textAnchor="middle"
-                    fontSize="8.5"
+                    fontSize="11"
                     fontWeight="800"
-                    letterSpacing="0.08em"
-                    fill={isCurrent ? "#ffffff" : "var(--ink-soft)"}
+                    letterSpacing="0.06em"
+                    fill={isCurrent ? "#fcf8ee" : "var(--ink-soft)"}
                   >
                     {st.code}
                   </text>
@@ -222,20 +224,21 @@ export default function IsometricCanvas({
                   {/* Station Label */}
                   <text
                     x={st.x}
-                    y={st.y + 42}
+                    y={st.y + 44}
                     textAnchor="middle"
-                    fontSize="11"
+                    fontSize="14.5"
                     fontWeight="800"
-                    letterSpacing="0.05em"
+                    letterSpacing="0.04em"
                     fill={isCurrent ? "var(--ink-strong)" : "var(--ink)"}
                   >
                     {st.label}
                   </text>
                   <text
                     x={st.x}
-                    y={st.y + 55}
+                    y={st.y + 62}
                     textAnchor="middle"
-                    fontSize="9.5"
+                    fontSize="13.5"
+                    fontWeight="500"
                     fill="var(--ink-soft)"
                   >
                     {st.labelTh}
@@ -265,23 +268,23 @@ export default function IsometricCanvas({
               {/* Floating Token Tag Badge */}
               <g transform="translate(0, -22)">
                 <rect
-                  x="-45"
-                  y="-16"
-                  width="90"
-                  height="18"
-                  rx="3"
+                  x="-58"
+                  y="-20"
+                  width="116"
+                  height="22"
+                  rx="2.5"
                   fill="var(--ink-strong)"
                   stroke="var(--active)"
-                  strokeWidth="1"
+                  strokeWidth="1.2"
                 />
                 <text
                   x="0"
-                  y="-4"
+                  y="-5"
                   textAnchor="middle"
-                  fontSize="9.5"
+                  fontSize="12"
                   fontWeight="800"
                   letterSpacing="0.06em"
-                  fill="#ffffff"
+                  fill="#fcf8ee"
                 >
                   {currentStep.refCode}
                 </text>
@@ -291,22 +294,22 @@ export default function IsometricCanvas({
 
           {/* Floating Blueprint Asset Preview Card in the Top-Right */}
           <div className="pe-floating-card">
-            <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center justify-between mb-2">
               <span className="pe-card-badge">STEP {currentStep.id} · ASSET SNAPSHOT</span>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(true)}
-                className="text-[10px] text-blue-600 hover:text-blue-800 flex items-center gap-1 font-bold bg-transparent border-0 cursor-pointer"
+                className="text-[11.5px] text-[#b4531a] hover:text-[#331e10] flex items-center gap-1 font-extrabold bg-transparent border-0 cursor-pointer"
                 title="ขยายดูภาพเต็ม"
               >
-                <Maximize2 className="w-3 h-3" /> ขยายภาพ
+                <Maximize2 className="w-3.5 h-3.5" /> ขยายภาพ
               </button>
             </div>
 
             {/* Character scene thumbnail */}
             {currentStep.characterImage && (
-              <div className="mb-2 p-1.5 bg-white border border-[#c8d6ec] rounded flex items-center gap-2">
-                <div className="w-14 h-14 relative shrink-0 bg-[#f8fbff] rounded overflow-hidden border border-[#e2ebfc]">
+              <div className="mb-2 p-2 bg-[#fcf8ee] border border-[#d8c6aa] rounded-xs flex items-center gap-2.5">
+                <div className="w-14 h-14 relative shrink-0 bg-[#f6efe0] rounded-xs overflow-hidden border border-[#e8dcc6]">
                   <Image
                     src={currentStep.characterImage}
                     alt="Character"
@@ -316,10 +319,10 @@ export default function IsometricCanvas({
                   />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[10.5px] font-bold text-[#00238a] leading-tight">
+                  <div className="text-[12.5px] font-bold text-[#331e10] leading-snug">
                     {currentStep.characterTitle || "ภาพตัวละครและฉาก"}
                   </div>
-                  <div className="text-[9px] text-[#5a73a8] mt-0.5">
+                  <div className="text-[11px] text-[#7a5a40] mt-0.5">
                     Minimalist Line-Art (1:1)
                   </div>
                 </div>
@@ -328,15 +331,17 @@ export default function IsometricCanvas({
 
             {/* UI Wireframe thumbnail (if present) */}
             {currentStep.uiWireframes.length > 0 && (
-              <div className="p-1.5 bg-white border border-[#c8d6ec] rounded">
-                <div className="flex items-center justify-between text-[9.5px] font-bold text-[#00238a] mb-1">
-                  <span>{currentStep.uiWireframes[selectedWireframeIdx]?.title}</span>
-                  <span className="text-[8.5px] text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded">
+              <div className="p-2 bg-[#fcf8ee] border border-[#d8c6aa] rounded-xs">
+                <div className="flex items-center justify-between text-[11.5px] font-bold text-[#331e10] mb-1.5">
+                  <span className="truncate pr-1">
+                    {currentStep.uiWireframes[selectedWireframeIdx]?.title}
+                  </span>
+                  <span className="text-[10px] font-extrabold text-[#1f7a4c] bg-[#dfece3] px-1.5 py-0.5 rounded-xs shrink-0">
                     {currentStep.uiWireframes[selectedWireframeIdx]?.tag}
                   </span>
                 </div>
                 <div
-                  className="w-full h-24 relative bg-[#f8fbff] rounded overflow-hidden cursor-pointer hover:border-blue-400 border border-[#e2ebfc] transition"
+                  className="w-full h-24 relative bg-[#f6efe0] rounded-xs overflow-hidden cursor-pointer hover:border-[#b4531a] border border-[#e8dcc6] transition"
                   onClick={() => {
                     setActiveWireframe(currentStep.uiWireframes[selectedWireframeIdx]);
                     setIsModalOpen(true);
@@ -352,16 +357,16 @@ export default function IsometricCanvas({
 
                 {/* Sub-tabs if multiple wireframes available */}
                 {currentStep.uiWireframes.length > 1 && (
-                  <div className="flex gap-1 mt-1.5 overflow-x-auto pb-0.5">
+                  <div className="flex gap-1 mt-2 overflow-x-auto pb-0.5">
                     {currentStep.uiWireframes.map((wf, idx) => (
                       <button
                         key={wf.id}
                         type="button"
                         onClick={() => setSelectedWireframeIdx(idx)}
-                        className={`text-[8.5px] font-bold px-1.5 py-0.5 rounded shrink-0 transition ${
+                        className={`text-[10.5px] font-extrabold px-2 py-0.5 rounded-xs shrink-0 transition ${
                           selectedWireframeIdx === idx
-                            ? "bg-[#1f5fe0] text-white"
-                            : "bg-[#edf4fe] text-[#0032a0] hover:bg-[#dbeafe]"
+                            ? "bg-[#b4531a] text-[#fcf8ee]"
+                            : "bg-[#efe4ca] text-[#4a2e1b] hover:bg-[#e5d5b5]"
                         }`}
                       >
                         {wf.tag}
@@ -379,13 +384,13 @@ export default function IsometricCanvas({
           VIEW 2: UI & SCENE VIEWER (High-Res Side-by-Side Comparison)
           ========================================================================= */}
       {viewMode === "scene" && (
-        <div className="w-full h-full p-4 overflow-y-auto bg-[#f8fbff] flex flex-col gap-4">
-          <div className="flex items-center justify-between border-b border-[#cbd5e1] pb-2">
+        <div className="w-full h-full p-4 overflow-y-auto bg-[#f6efe0] flex flex-col gap-4">
+          <div className="flex items-center justify-between border-b border-[#d8c6aa] pb-2.5">
             <div>
-              <h3 className="text-sm font-bold text-[#00238a] m-0">
+              <h3 className="text-[16px] font-extrabold text-[#331e10] tracking-wide m-0">
                 SCENE &amp; UI WIREFRAME ASSETS · STEP {currentStep.id}
               </h3>
-              <p className="text-[11px] text-[#5a73a8] m-0">
+              <p className="text-[13px] text-[#7a5a40] m-0 mt-0.5">
                 ภาพประกอบจริงสไตล์ Minimalist Blueprint ที่ใช้ในกระบวนการนี้
               </p>
             </div>
@@ -396,10 +401,10 @@ export default function IsometricCanvas({
                     key={wf.id}
                     type="button"
                     onClick={() => setSelectedWireframeIdx(idx)}
-                    className={`text-xs font-bold px-2.5 py-1 rounded border transition ${
+                    className={`text-[12px] font-extrabold px-2.5 py-1 rounded-xs border transition ${
                       selectedWireframeIdx === idx
-                        ? "bg-[#1f5fe0] text-white border-[#1f5fe0]"
-                        : "bg-white text-[#0032a0] border-[#c8d6ec] hover:bg-[#edf4fe]"
+                        ? "bg-[#b4531a] text-[#fcf8ee] border-[#b4531a]"
+                        : "bg-[#fcf8ee] text-[#4a2e1b] border-[#d8c6aa] hover:bg-[#f3ead6]"
                     }`}
                   >
                     {wf.tag}
@@ -411,43 +416,46 @@ export default function IsometricCanvas({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-[360px]">
             {/* Left: Character scene */}
-            <div className="bg-white border border-[#c8d6ec] rounded-lg p-3 flex flex-col shadow-xs">
+            <div className="bg-[#fcf8ee] border border-[#d8c6aa] rounded-sm p-3.5 flex flex-col shadow-xs">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-[#00238a]">
+                <span className="text-[13.5px] font-extrabold text-[#331e10] tracking-wide">
                   CHARACTER &amp; CLINIC SCENE
                 </span>
-                <span className="text-[10px] text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200 font-semibold">
+                <span className="text-[11px] text-[#7c4d3a] bg-[#f3e6dd] px-2 py-0.5 rounded-xs border border-[#d9c0b2] font-bold">
                   Isometric 1:1 Vector
                 </span>
               </div>
-              <div className="flex-1 relative min-h-[280px] bg-[#fbfdff] rounded border border-[#edf2fa] flex items-center justify-center overflow-hidden">
+              <div className="flex-1 relative min-h-[280px] bg-[#f9f3e5] rounded-xs border border-[#e8dcc6] flex items-center justify-center overflow-hidden">
                 {currentStep.characterImage ? (
                   <Image
                     src={currentStep.characterImage}
                     alt="Character Scene"
                     fill
                     className="object-contain p-2"
+                    style={{ mixBlendMode: "multiply" }}
                   />
                 ) : (
-                  <div className="text-xs text-[#7d96c6]">ไม่มีภาพประกอบตัวละครในขั้นนี้</div>
+                  <div className="text-[13px] text-[#9c7b5e]">
+                    ไม่มีภาพประกอบตัวละครในขั้นนี้
+                  </div>
                 )}
               </div>
-              <p className="text-xs font-semibold text-[#0032a0] text-center mt-2 mb-0">
+              <p className="text-[13.5px] font-bold text-[#4a2e1b] text-center mt-2.5 mb-0">
                 {currentStep.characterTitle}
               </p>
             </div>
 
             {/* Right: UI Wireframe */}
-            <div className="bg-white border border-[#c8d6ec] rounded-lg p-3 flex flex-col shadow-xs">
+            <div className="bg-[#fcf8ee] border border-[#d8c6aa] rounded-sm p-3.5 flex flex-col shadow-xs">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-[#00238a]">
+                <span className="text-[13.5px] font-extrabold text-[#331e10] tracking-wide">
                   {currentStep.uiWireframes[selectedWireframeIdx]?.title || "UI WIREFRAME"}
                 </span>
-                <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-semibold">
+                <span className="text-[11px] text-[#1f7a4c] bg-[#dfece3] px-2 py-0.5 rounded-xs border border-[#b8d4c2] font-bold">
                   {currentStep.uiWireframes[selectedWireframeIdx]?.tag || "NO UI REQUIRED"}
                 </span>
               </div>
-              <div className="flex-1 relative min-h-[280px] bg-[#fbfdff] rounded border border-[#edf2fa] flex items-center justify-center overflow-hidden">
+              <div className="flex-1 relative min-h-[280px] bg-[#f9f3e5] rounded-xs border border-[#e8dcc6] flex items-center justify-center overflow-hidden">
                 {currentStep.uiWireframes.length > 0 ? (
                   <Image
                     src={currentStep.uiWireframes[selectedWireframeIdx]?.image}
@@ -460,22 +468,22 @@ export default function IsometricCanvas({
                     }}
                   />
                 ) : (
-                  <div className="text-center p-6 text-xs text-[#7d96c6]">
+                  <div className="text-center p-6 text-[13.5px] text-[#7a5a40]">
                     ขั้นตอนนี้เป็นการเคลื่อนไหวเชิงกายภาพหรือพักคอย ไม่มีหน้าจอ KAHIS EMR โดยตรง
                   </div>
                 )}
               </div>
               {currentStep.uiWireframes.length > 0 && (
-                <div className="text-center mt-2">
+                <div className="text-center mt-2.5">
                   <button
                     type="button"
                     onClick={() => {
                       setActiveWireframe(currentStep.uiWireframes[selectedWireframeIdx]);
                       setIsModalOpen(true);
                     }}
-                    className="text-xs text-[#1f5fe0] hover:underline font-bold inline-flex items-center gap-1 bg-transparent border-0 cursor-pointer"
+                    className="text-[13px] text-[#b4531a] hover:underline font-extrabold inline-flex items-center gap-1.5 bg-transparent border-0 cursor-pointer"
                   >
-                    <Eye className="w-3.5 h-3.5" /> คลิกเพื่อขยายดูภาพหน้าจอขนาดใหญ่
+                    <Eye className="w-4 h-4" /> คลิกเพื่อขยายดูภาพหน้าจอขนาดใหญ่
                   </button>
                 </div>
               )}
@@ -488,55 +496,58 @@ export default function IsometricCanvas({
           VIEW 3: SEQUENCE VIEW (Vertical Interaction Timeline)
           ========================================================================= */}
       {viewMode === "sequence" && (
-        <div className="w-full h-full p-6 overflow-y-auto bg-white flex flex-col items-center">
-          <div className="w-full max-w-2xl border-b border-[#cbd5e1] pb-3 mb-4">
-            <h3 className="text-sm font-bold text-[#00238a] m-0">
+        <div className="w-full h-full p-6 overflow-y-auto bg-[#f9f3e5] flex flex-col items-center">
+          <div className="w-full max-w-2xl border-b border-[#d8c6aa] pb-3 mb-4">
+            <h3 className="text-[16px] font-extrabold text-[#331e10] tracking-wide m-0">
               SEQUENCE TIMELINE DIAGRAM
             </h3>
-            <p className="text-xs text-[#5a73a8] m-0">
+            <p className="text-[13.5px] text-[#7a5a40] m-0 mt-0.5">
               ลำดับการสื่อสารและส่งต่อข้อมูลระหว่างผู้ใช้งานและระบบทั้ง 9 ขั้นตอน
             </p>
           </div>
 
-          <div className="w-full max-w-2xl relative pl-8 border-l-2 border-[#6f94c9] flex flex-col gap-5">
+          <div className="w-full max-w-2xl relative pl-8 border-l-2 border-[#a68664] flex flex-col gap-5">
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((stepNum) => {
               const isCurrent = stepNum === currentStep.id;
               return (
                 <div
                   key={stepNum}
                   onClick={() => onSelectStep?.(stepNum)}
-                  className={`relative p-3 rounded-lg border cursor-pointer transition ${
+                  className={`relative p-3.5 rounded-sm border cursor-pointer transition ${
                     isCurrent
-                      ? "bg-[#eef5ff] border-[#1f5fe0] shadow-sm"
-                      : "bg-[#fbfdff] border-[#e2ebfc] hover:bg-[#f4f8ff]"
+                      ? "bg-[#f5e3c8] border-[#b4531a] shadow-xs"
+                      : "bg-[#fcf8ee] border-[#d8c6aa] hover:bg-[#f3ead6]"
                   }`}
                 >
                   {/* Timeline Dot */}
                   <div
-                    className={`absolute -left-[41px] top-4 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border-2 ${
+                    className={`absolute -left-[41px] top-4 w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-extrabold border-2 ${
                       isCurrent
-                        ? "bg-[#1f5fe0] text-white border-white ring-2 ring-[#1f5fe0]"
-                        : "bg-white text-[#6f94c9] border-[#6f94c9]"
+                        ? "bg-[#b4531a] text-[#fcf8ee] border-[#fcf8ee] ring-2 ring-[#b4531a]"
+                        : "bg-[#fcf8ee] text-[#7a5a40] border-[#a68664]"
                     }`}
                   >
                     {stepNum}
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#00238a]">
-                      STEP {stepNum}: {stepNum === currentStep.id ? currentStep.title : `ขั้นตอนที่ ${stepNum}`}
+                    <span className="text-[14px] font-extrabold text-[#331e10]">
+                      STEP {stepNum}:{" "}
+                      {stepNum === currentStep.id
+                        ? currentStep.title
+                        : `ขั้นตอนที่ ${stepNum}`}
                     </span>
                     <span
-                      className={`text-[10px] font-semibold px-2 py-0.5 rounded ${
+                      className={`text-[11.5px] font-bold px-2 py-0.5 rounded-xs ${
                         isCurrent
-                          ? "bg-[#1f5fe0] text-white"
-                          : "bg-[#e2ebfc] text-[#0032a0]"
+                          ? "bg-[#b4531a] text-[#fcf8ee]"
+                          : "bg-[#efe4ca] text-[#4a2e1b]"
                       }`}
                     >
                       {stepNum === currentStep.id ? currentStep.module : "OPD"}
                     </span>
                   </div>
-                  <p className="text-xs text-[#475569] mt-1 mb-0">
+                  <p className="text-[13px] text-[#5c4028] mt-1 mb-0">
                     {stepNum === currentStep.id
                       ? currentStep.action
                       : "คลิกเพื่อดูรายละเอียดของขั้นตอนนี้"}
@@ -553,30 +564,30 @@ export default function IsometricCanvas({
           ========================================================================= */}
       {isModalOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-6"
+          className="fixed inset-0 z-50 bg-[#1e120a]/65 backdrop-blur-xs flex items-center justify-center p-6"
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-[#94a3b8]"
+            className="bg-[#fcf8ee] rounded-md shadow-2xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-[#a68664]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="h-12 px-5 bg-[#00238a] text-white flex items-center justify-between shrink-0">
+            <div className="h-12 px-5 bg-[#331e10] text-[#fcf8ee] flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-300" />
-                <h4 className="text-sm font-bold tracking-wide m-0">
+                <Sparkles className="w-4 h-4 text-[#f4b305]" />
+                <h4 className="text-[15px] font-extrabold tracking-wide m-0">
                   {activeWireframe?.title || currentStep.characterTitle || "Asset Preview"}
                 </h4>
               </div>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="text-white/80 hover:text-white p-1 rounded hover:bg-white/10 transition cursor-pointer flex items-center justify-center"
+                className="text-[#fcf8ee]/80 hover:text-[#fcf8ee] p-1 rounded-xs hover:bg-white/10 transition cursor-pointer flex items-center justify-center"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-4 flex-1 relative min-h-[500px] bg-[#f8fbff] flex items-center justify-center overflow-auto">
+            <div className="p-4 flex-1 relative min-h-[500px] bg-[#f9f3e5] flex items-center justify-center overflow-auto">
               {activeWireframe ? (
                 <div className="relative w-full h-[520px]">
                   <Image
@@ -598,12 +609,12 @@ export default function IsometricCanvas({
               ) : null}
             </div>
 
-            <div className="h-11 px-5 bg-[#f1f5f9] border-t border-[#cbd5e1] flex items-center justify-between text-xs text-[#475569]">
-              <span>KAHIS Minimalist Blueprint Design System · 4K Source</span>
+            <div className="h-11 px-5 bg-[#f3ead6] border-t border-[#d8c6aa] flex items-center justify-between text-[13px] text-[#5c4028]">
+              <span>KAHIS Warm Earth-Tone Blueprint Design System · 4K Source</span>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="px-3 py-1 bg-white border border-[#cbd5e1] rounded font-semibold text-[#0f172a] hover:bg-[#e2e8f0]"
+                className="px-3.5 py-1 bg-[#fcf8ee] border border-[#a68664] rounded-xs font-bold text-[#331e10] hover:bg-[#efe4ca] cursor-pointer"
               >
                 ปิดหน้าต่าง
               </button>

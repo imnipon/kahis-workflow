@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import Link from "next/link";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   WORKFLOWS,
   WorkflowGroup,
@@ -16,10 +15,6 @@ import {
   RotateCcw,
   ChevronLeft,
   ChevronRight,
-  ArrowLeft,
-  Layers,
-  MapPin,
-  Clock,
   Sparkles,
   ExternalLink,
   Check
@@ -134,8 +129,8 @@ export default function ExplorerShell() {
             <span className="corner tr" />
             <span className="corner bl" />
             <span className="corner br" />
-            <svg viewBox="0 0 64 64" className="w-5 h-5 text-[#0032a0]" fill="currentColor">
-              <g stroke="#ffffff" strokeWidth="2.4" strokeLinejoin="round">
+            <svg viewBox="0 0 64 64" className="w-8 h-8 text-[#4a2e1b]" fill="currentColor">
+              <g stroke="#fcf8ee" strokeWidth="2.4" strokeLinejoin="round">
                 <path d="M32 3 L58 16.5 L32 30 L6 16.5 Z" />
                 <path d="M6 16.5 L32 30 L32 45.5 L6 32 Z" />
                 <path d="M58 16.5 L32 30 L32 45.5 L58 32 Z" />
@@ -145,7 +140,9 @@ export default function ExplorerShell() {
             </svg>
           </div>
           <div>
-            <h1 className="pe-brand-title">KAHIS <em>WORKFLOW EXPLORER</em></h1>
+            <h1 className="pe-brand-title">
+              KAHIS <em>WORKFLOW EXPLORER</em>
+            </h1>
             <p className="pe-brand-sub">LEARN VETERINARY CLINICAL &amp; EMR PROCESSES</p>
           </div>
         </div>
@@ -166,15 +163,15 @@ export default function ExplorerShell() {
             href="https://github.com/imnipon/kahis-workflow"
             target="_blank"
             rel="noopener noreferrer"
-            className="pe-pill-btn flex items-center gap-1.5 text-xs font-bold text-[#00238a] hover:bg-[#edf4fe]"
+            className="pe-menu-btn"
             title="GitHub Repository: imnipon/kahis-workflow"
           >
-            <ExternalLink className="w-3.5 h-3.5" />
+            <ExternalLink className="w-4 h-4" />
             <span>GITHUB REPO</span>
           </a>
 
-          <span className="pe-pill-btn flex items-center gap-1.5 text-xs font-bold text-[#5a73a8]">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+          <span className="pe-menu-btn text-[#7a5a40]">
+            <Sparkles className="w-4 h-4 text-[#d98a00]" />
             <span>KAHIS v1.0</span>
           </span>
         </div>
@@ -185,13 +182,13 @@ export default function ExplorerShell() {
           ========================================================================= */}
       <main className="pe-workspace">
         {/* -----------------------------------------------------------------------
-            PANEL 1: SIDEBAR (Left 430px, full height)
+            PANEL 1: SIDEBAR (Left 445px, full height)
             ----------------------------------------------------------------------- */}
         <aside className="pe-panel pe-sidebar">
           <div className="pe-panel-head">
             <h2 className="pe-panel-title">CLINICAL WORKFLOWS</h2>
-            <span className="text-[10px] font-bold text-[#1f5fe0] bg-[#eef4ff] px-2 py-0.5 rounded border border-[#c9d8f6]">
-              {WORKFLOWS.length} FLOWS
+            <span className="text-[11px] font-extrabold tracking-wider text-[#b4531a] bg-[#f5e3c8] px-2.5 py-0.5 rounded-xs border border-[#d8c6aa]">
+              {filteredWorkflows.length} FLOWS
             </span>
           </div>
 
@@ -231,7 +228,7 @@ export default function ExplorerShell() {
             <div className="pe-proto-header">
               <div className="flex items-center justify-between">
                 <span className="pe-proto-title">{activeWorkflow.title}</span>
-                <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                <span className="text-[11px] font-extrabold tracking-wider px-2 py-0.5 rounded-xs bg-[#dfece3] text-[#1f7a4c] border border-[#b8d4c2]">
                   ACTIVE
                 </span>
               </div>
@@ -299,24 +296,24 @@ export default function ExplorerShell() {
               </button>
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={handlePrevStep}
                 disabled={currentStepIdx === 0}
-                className="pe-pill-btn text-xs px-2 disabled:opacity-30 disabled:cursor-not-allowed"
+                className="pe-pill-btn text-sm px-2.5 disabled:opacity-35 disabled:cursor-not-allowed"
                 title="ย้อนกลับ (←)"
               >
                 ‹
               </button>
-              <span className="text-[10px] font-bold text-[#5a73a8]">
+              <span className="text-[12.5px] font-extrabold text-[#7a5a40] px-1">
                 {currentStepIdx + 1}/{totalSteps}
               </span>
               <button
                 type="button"
                 onClick={handleNextStep}
                 disabled={currentStepIdx === totalSteps - 1}
-                className="pe-pill-btn text-xs px-2 disabled:opacity-30 disabled:cursor-not-allowed"
+                className="pe-pill-btn text-sm px-2.5 disabled:opacity-35 disabled:cursor-not-allowed"
                 title="ถัดไป (→)"
               >
                 ›
@@ -332,11 +329,11 @@ export default function ExplorerShell() {
         </section>
 
         {/* -----------------------------------------------------------------------
-            PANEL 3: OVERVIEW (Right-Top, 340px)
+            PANEL 3: OVERVIEW (Right-Top, 348px)
             ----------------------------------------------------------------------- */}
         <section className="pe-panel pe-overview">
           <div className="pe-panel-head">
-            <div className="flex gap-1">
+            <div className="flex gap-1.5">
               <button
                 type="button"
                 onClick={() => setOverviewTab("step")}
@@ -379,8 +376,8 @@ export default function ExplorerShell() {
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-[#e3e9f3]">
-                  <span className="text-[10px] font-extrabold text-[#00238a] tracking-wider block mb-2">
+                <div className="mt-4 pt-3 border-t border-[#e8dcc6]">
+                  <span className="text-[12px] font-extrabold text-[#331e10] tracking-wider block mb-2">
                     KEY CLINICAL CHECKPOINTS
                   </span>
                   <div>
@@ -455,7 +452,7 @@ export default function ExplorerShell() {
                 className="pe-ctrl-btn disabled:opacity-40"
                 title="ย้อนกลับ (←)"
               >
-                <ChevronLeft className="w-3.5 h-3.5" />
+                <ChevronLeft className="w-4 h-4" />
               </button>
 
               <button
@@ -466,12 +463,12 @@ export default function ExplorerShell() {
               >
                 {isPlaying ? (
                   <>
-                    <Pause className="w-3.5 h-3.5" />
+                    <Pause className="w-4 h-4" />
                     <span>PAUSE</span>
                   </>
                 ) : (
                   <>
-                    <Play className="w-3.5 h-3.5" />
+                    <Play className="w-4 h-4" />
                     <span>PLAY</span>
                   </>
                 )}
@@ -485,7 +482,7 @@ export default function ExplorerShell() {
                 title="ก้าวไปข้างหน้า 1 ขั้น (→)"
               >
                 <span>STEP</span>
-                <ChevronRight className="w-3.5 h-3.5" />
+                <ChevronRight className="w-4 h-4" />
               </button>
 
               <button
@@ -494,7 +491,7 @@ export default function ExplorerShell() {
                 className="pe-ctrl-btn"
                 title="เริ่มใหม่ (R)"
               >
-                <RotateCcw className="w-3 h-3" />
+                <RotateCcw className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -526,17 +523,17 @@ export default function ExplorerShell() {
                       className={`cursor-pointer transition ${isActive ? "is-active" : ""}`}
                     >
                       <td>
-                        <span className="flex items-center gap-1.5 font-bold">
+                        <span className="flex items-center gap-2 font-bold">
                           <i className={`pe-legend-dot ${st.badgeColor}`} />
                           {st.id}
                         </span>
                       </td>
-                      <td className="text-[#5a73a8]">{st.time}</td>
+                      <td className="text-[#7a5a40]">{st.time}</td>
                       <td>{st.actor}</td>
                       <td>{st.target}</td>
-                      <td className="font-semibold text-[#00238a]">{st.module}</td>
+                      <td className="font-bold text-[#331e10]">{st.module}</td>
                       <td>{st.action}</td>
-                      <td className="font-mono text-[10px] text-[#1f5fe0]">{st.refCode}</td>
+                      <td className="text-[12.5px] font-bold text-[#b4531a]">{st.refCode}</td>
                     </tr>
                   );
                 })}
