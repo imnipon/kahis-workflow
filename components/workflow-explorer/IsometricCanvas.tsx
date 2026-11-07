@@ -29,8 +29,193 @@ interface IsometricCanvasProps {
   onSwitchView?: (mode: "flow" | "scene") => void;
 }
 
-const FULL_VIEWBOX: [number, number, number, number] = [0, 0, 1140, 565];
-const ASPECT = 1140 / 565;
+const FULL_VIEWBOX: [number, number, number, number] = [0, 0, 1150, 565];
+const ASPECT = 1150 / 565;
+
+interface StationVisualPalette {
+  top: string;
+  topActive: string;
+  left: string;
+  leftActive: string;
+  right: string;
+  rightActive: string;
+  stroke: string;
+  strokeActive: string;
+  textTitle: string;
+  textSubtitle: string;
+}
+
+const STATION_PALETTES: Record<string, StationVisualPalette> = {
+  // 1. Entrance: Warm brown (สีน้ำตาลเดิม)
+  entrance: {
+    top: "#fcf6ed",
+    topActive: "#fbeed6",
+    left: "#e4cdac",
+    leftActive: "#dfbe92",
+    right: "#dfc5a0",
+    rightActive: "#d2a873",
+    stroke: "#8c5828",
+    strokeActive: "#b4531a",
+    textTitle: "#331e10",
+    textSubtitle: "#7a5a40"
+  },
+  // 2. Registration: Darker green tone (เขียวเข้มกว่า sp. clinic / surgery)
+  registration: {
+    top: "#e6f9ee",
+    topActive: "#c7f3d6",
+    left: "#86efac",
+    leftActive: "#4ade80",
+    right: "#6ee7b7",
+    rightActive: "#34d399",
+    stroke: "#15803d",
+    strokeActive: "#14532d",
+    textTitle: "#14532d",
+    textSubtitle: "#15803d"
+  },
+  // 3. ER: Orange / Red emergency tone (วางคู่กับ waiting hall)
+  examEr: {
+    top: "#fef2f2",
+    topActive: "#fee2e2",
+    left: "#fca5a5",
+    leftActive: "#f87171",
+    right: "#f87171",
+    rightActive: "#ef4444",
+    stroke: "#dc2626",
+    strokeActive: "#b91c1c",
+    textTitle: "#7f1d1d",
+    textSubtitle: "#991b1b"
+  },
+  // 4. Waiting Zone: Light brown (สีน้ำตาลอ่อนกว่า entrance)
+  waitingHall: {
+    top: "#fffcf7",
+    topActive: "#fdf4e4",
+    left: "#f3ebd9",
+    leftActive: "#ebd8bd",
+    right: "#ebdcc7",
+    rightActive: "#dec49f",
+    stroke: "#bfa688",
+    strokeActive: "#b4531a",
+    textTitle: "#4a2e1b",
+    textSubtitle: "#7a5a40"
+  },
+  // 5. Exam Room (General): Light blue tone (สีโทนฟ้า)
+  examGeneral: {
+    top: "#f0f9ff",
+    topActive: "#e0f2fe",
+    left: "#bae6fd",
+    leftActive: "#7dd3fc",
+    right: "#93c5fd",
+    rightActive: "#60a5fa",
+    stroke: "#0284c7",
+    strokeActive: "#0369a1",
+    textTitle: "#0c4a6e",
+    textSubtitle: "#0369a1"
+  },
+  // 6. SP. Clinic: Deep blue tone (สีฟ้าเข้มกว่า general)
+  examSp: {
+    top: "#eff6ff",
+    topActive: "#dbeafe",
+    left: "#93c5fd",
+    leftActive: "#60a5fa",
+    right: "#60a5fa",
+    rightActive: "#3b82f6",
+    stroke: "#1d4ed8",
+    strokeActive: "#1e40af",
+    textTitle: "#1e3a8a",
+    textSubtitle: "#1d4ed8"
+  },
+  // 6b. Surgery: Light green (เขียว อ่อนกว่า register)
+  surgery: {
+    top: "#f7fee7",
+    topActive: "#ecfccb",
+    left: "#d9f99d",
+    leftActive: "#bef264",
+    right: "#bef264",
+    rightActive: "#a3e635",
+    stroke: "#4d7c0f",
+    strokeActive: "#3f6212",
+    textTitle: "#365314",
+    textSubtitle: "#4d7c0f"
+  },
+  // 7. Xray / USG: Dark yellow / Amber (สีเหลืองเข้ม)
+  xrayUsg: {
+    top: "#fefce8",
+    topActive: "#fef08a",
+    left: "#fde047",
+    leftActive: "#facc15",
+    right: "#eab308",
+    rightActive: "#ca8a04",
+    stroke: "#a16207",
+    strokeActive: "#854d0e",
+    textTitle: "#713f12",
+    textSubtitle: "#854d0e"
+  },
+  // 7b. Tx Room: Light / Pale yellow (สีเหลืองจาง)
+  txRoom: {
+    top: "#fffef0",
+    topActive: "#fef9c3",
+    left: "#fef08a",
+    leftActive: "#fde047",
+    right: "#fde047",
+    rightActive: "#facc15",
+    stroke: "#ca8a04",
+    strokeActive: "#a16207",
+    textTitle: "#713f12",
+    textSubtitle: "#854d0e"
+  },
+  // 8. Rx Room: Pale / Light purple (ห้องจัดยานำกลับ ใช้กล่องสีม่วงจาง)
+  rxRoom: {
+    top: "#faf5ff",
+    topActive: "#f3e8ff",
+    left: "#e9d5ff",
+    leftActive: "#d8b4fe",
+    right: "#d8b4fe",
+    rightActive: "#c084fc",
+    stroke: "#8b5cf6",
+    strokeActive: "#7c3aed",
+    textTitle: "#4c1d95",
+    textSubtitle: "#6d28d9"
+  },
+  // 9. Cashier: Deep royal purple (เก็บเงิน/ใบเสร็จ/check-out ใช้กล่องสีม่วงเข้ม)
+  cashier: {
+    top: "#f5f3ff",
+    topActive: "#ede9fe",
+    left: "#c084fc",
+    leftActive: "#a855f7",
+    right: "#a855f7",
+    rightActive: "#9333ea",
+    stroke: "#6b21a8",
+    strokeActive: "#581c87",
+    textTitle: "#3b0764",
+    textSubtitle: "#581c87"
+  },
+  // 10. Pharmacy: Same purple as rxRoom (วางคู่กับ Rx ใช้สีม่วงเดียวกับ rx)
+  pharmacy: {
+    top: "#faf5ff",
+    topActive: "#f3e8ff",
+    left: "#e9d5ff",
+    leftActive: "#d8b4fe",
+    right: "#d8b4fe",
+    rightActive: "#c084fc",
+    stroke: "#8b5cf6",
+    strokeActive: "#7c3aed",
+    textTitle: "#4c1d95",
+    textSubtitle: "#6d28d9"
+  },
+  // 11. Exit: Cool slate / Stone tone (แนวระนาบเดียวกับทางเข้า ด้านขวา ของแมพ)
+  exit: {
+    top: "#f8fafc",
+    topActive: "#f1f5f9",
+    left: "#e2e8f0",
+    leftActive: "#cbd5e1",
+    right: "#cbd5e1",
+    rightActive: "#94a3b8",
+    stroke: "#475569",
+    strokeActive: "#334155",
+    textTitle: "#1e293b",
+    textSubtitle: "#475569"
+  }
+};
 
 function getStepFocusNodeIds(step: WorkflowStep): Set<string> {
   return new Set<string>([
@@ -494,49 +679,95 @@ export default function IsometricCanvas({
 
             {/* Zone Grouping Background Bands (Shown in Full Map mode only so they don't clutter Step Zoom) */}
             {!isAutoZoom && (
-              <g opacity="0.55">
-                {/* Top Band: Clinical Specialty & Exam Departments */}
+              <g opacity="0.6">
+                {/* Emergency Care (ER) Box (Paired above Waiting Zone) */}
                 <rect
-                  x="300"
-                  y="46"
-                  width="535"
-                  height="136"
+                  x="295"
+                  y="65"
+                  width="140"
+                  height="145"
                   rx="6"
-                  fill="#f2e7d2"
-                  stroke="#d8c6aa"
-                  strokeDasharray="5 4"
+                  fill="#fff5f5"
+                  stroke="#f87171"
+                  strokeDasharray="4 3"
                 />
                 <text
-                  x="314"
-                  y="64"
-                  fontSize="10.5"
+                  x="365"
+                  y="84"
+                  textAnchor="middle"
+                  fontSize="9.6"
                   fontWeight="800"
-                  letterSpacing="0.08em"
-                  fill="#7a5a40"
+                  letterSpacing="0.06em"
+                  fill="#b91c1c"
                 >
-                  CLINICAL EXAM DEPARTMENTS (ER / SP. CLINIC / SURGERY)
+                  EMERGENCY CARE (ER)
                 </text>
 
-                {/* Bottom Band: Diagnostic & Financial Support Units */}
+                {/* Top Band: Special Clinic & Surgery Departments */}
                 <rect
-                  x="468"
-                  y="442"
-                  width="194"
-                  height="112"
+                  x="475"
+                  y="65"
+                  width="340"
+                  height="145"
                   rx="6"
-                  fill="#f3edf9"
-                  stroke="#cbbbe2"
+                  fill="#f0f7ff"
+                  stroke="#93c5fd"
                   strokeDasharray="5 4"
                 />
                 <text
-                  x="480"
-                  y="458"
+                  x="490"
+                  y="84"
                   fontSize="9.8"
                   fontWeight="800"
                   letterSpacing="0.06em"
-                  fill="#5b3e96"
+                  fill="#1d4ed8"
                 >
-                  DIAGNOSTIC SIDEFLOW
+                  SPECIAL CLINIC / DEPARTMENTS ZONE (SP. CLINIC &amp; SURGERY)
+                </text>
+
+                {/* Bottom Band: Support Zone (XRAY / USG & TX ROOM) */}
+                <rect
+                  x="475"
+                  y="405"
+                  width="340"
+                  height="145"
+                  rx="6"
+                  fill="#fefce8"
+                  stroke="#facc15"
+                  strokeDasharray="5 4"
+                />
+                <text
+                  x="490"
+                  y="424"
+                  fontSize="9.8"
+                  fontWeight="800"
+                  letterSpacing="0.06em"
+                  fill="#a16207"
+                >
+                  SUPPORT ZONE (XRAY / USG &amp; TX ROOM)
+                </text>
+
+                {/* Vertical Band: Pharmacy & Rx Unit (Vertical Pairing) */}
+                <rect
+                  x="825"
+                  y="90"
+                  width="160"
+                  height="285"
+                  rx="6"
+                  fill="#faf5ff"
+                  stroke="#d8b4fe"
+                  strokeDasharray="5 4"
+                />
+                <text
+                  x="905"
+                  y="110"
+                  textAnchor="middle"
+                  fontSize="9.6"
+                  fontWeight="800"
+                  letterSpacing="0.05em"
+                  fill="#7e22ce"
+                >
+                  PHARMACY &amp; RX UNIT
                 </text>
               </g>
             )}
@@ -636,6 +867,7 @@ export default function IsometricCanvas({
               {Array.from(pulsedNodeIds).map((nodeId) => {
                 const st = STATIONS[nodeId];
                 if (!st) return null;
+                const palette = STATION_PALETTES[nodeId] || STATION_PALETTES.entrance;
                 const rx = (st.width || 44) + 14;
                 const ry = (st.height || 22) + 8;
                 return (
@@ -646,8 +878,8 @@ export default function IsometricCanvas({
                       rx={rx}
                       ry={ry}
                       fill="none"
-                      stroke="#b4531a"
-                      strokeWidth="1.8"
+                      stroke={palette.strokeActive}
+                      strokeWidth="2"
                       className="pe-iso-pulse-ring"
                     />
                   </g>
@@ -667,6 +899,8 @@ export default function IsometricCanvas({
                   const isOwnerHere =
                     currentStep.petOwner.fromNode === st.id ||
                     currentStep.petOwner.toNode === st.id;
+
+                  const palette = STATION_PALETTES[st.id] || STATION_PALETTES.entrance;
 
                   const w = st.width || 44;
                   const h = st.height || 22;
@@ -697,18 +931,12 @@ export default function IsometricCanvas({
                     ${st.x},${st.y + depth + 4 - h}
                   `;
 
-                  const topFill = isActive
-                    ? "url(#iso-top-active)"
-                    : st.category === "department"
-                    ? "url(#iso-top-dept)"
-                    : "url(#iso-top)";
-
                   return (
                     <g
                       key={st.id}
                       style={{
                         filter: isActive
-                          ? "drop-shadow(0 4px 10px rgba(180, 83, 26, 0.22))"
+                          ? "drop-shadow(0 4px 12px rgba(180, 83, 26, 0.26))"
                           : "none"
                       }}
                     >
@@ -718,54 +946,52 @@ export default function IsometricCanvas({
                       {/* Left Face */}
                       <polygon
                         points={leftFace}
-                        fill={isActive ? "#cfa068" : "#dec8a4"}
-                        stroke={isActive ? "#b4531a" : "#a68664"}
-                        strokeWidth="1.1"
+                        fill={isActive ? palette.leftActive : palette.left}
+                        stroke={isActive ? palette.strokeActive : palette.stroke}
+                        strokeWidth={isActive ? "1.4" : "1.1"}
                       />
 
                       {/* Right Face */}
                       <polygon
                         points={rightFace}
-                        fill={isActive ? "#dfb888" : "#ead8ba"}
-                        stroke={isActive ? "#b4531a" : "#a68664"}
-                        strokeWidth="1.1"
+                        fill={isActive ? palette.rightActive : palette.right}
+                        stroke={isActive ? palette.strokeActive : palette.stroke}
+                        strokeWidth={isActive ? "1.4" : "1.1"}
                       />
 
                       {/* Top Face */}
                       <polygon
                         points={topFace}
-                        fill={topFill}
+                        fill={isActive ? palette.topActive : palette.top}
                         stroke={
                           isOwnerHere
                             ? "#8c5828"
                             : isActive
-                            ? "#b4531a"
-                            : st.category === "department"
-                            ? "#0284c7"
-                            : "#a68664"
+                            ? palette.strokeActive
+                            : palette.stroke
                         }
-                        strokeWidth={isActive ? "2" : "1.2"}
+                        strokeWidth={isActive ? "2.2" : "1.3"}
                       />
 
-                      {/* Station Code + English Label + Thai Sub-label cleanly below Platform (Zero overlap with top elements) */}
+                      {/* Station English Label cleanly below Platform (Zero [] prefix) */}
                       <text
                         x={st.x}
-                        y={st.y + depth + 13}
+                        y={st.y + depth + 14}
                         textAnchor="middle"
                         fontSize="10.5"
                         fontWeight="800"
                         letterSpacing="0.03em"
-                        fill={isActive ? "#331e10" : "#4a2e1b"}
+                        fill={isActive ? palette.strokeActive : palette.textTitle}
                       >
-                        [{st.code}] {st.label}
+                        {st.label}
                       </text>
                       <text
                         x={st.x}
-                        y={st.y + depth + 25}
+                        y={st.y + depth + 26}
                         textAnchor="middle"
-                        fontSize="9.8"
+                        fontSize="9.6"
                         fontWeight="600"
-                        fill="#7a5a40"
+                        fill={palette.textSubtitle}
                       >
                         {st.labelTh}
                       </text>

@@ -124,72 +124,72 @@ export const STATIONS: Record<string, StationNode> = {
   entrance: {
     id: 'entrance',
     label: 'ENTRANCE',
-    labelTh: 'ทางเข้า / คัดกรอง',
-    code: 'MAIN-IN',
+    labelTh: 'ทางเข้า / กรอกใบคัดกรอง',
+    code: '',
     category: 'main',
     categoryLabel: 'MAIN FLOW',
-    x: 88,
+    x: 85,
     y: 310
   },
   registration: {
     id: 'registration',
     label: 'REGISTRATION',
     labelTh: 'เวชระเบียน / ทำประวัติ',
-    code: 'SUP-REG',
+    code: '',
     category: 'support',
     categoryLabel: 'SUPPORT UNIT',
-    x: 228,
+    x: 225,
     y: 310
   },
   waitingHall: {
     id: 'waitingHall',
-    label: 'WAITING HALL',
+    label: 'WAITING ZONE',
     labelTh: 'โถงพักคอย / จอเรียกคิว',
-    code: 'WAIT-HALL',
+    code: '',
     category: 'main',
     categoryLabel: 'MAIN FLOW',
-    x: 378,
+    x: 365,
     y: 310
   },
   examEr: {
     id: 'examEr',
-    label: 'ER (EMERGENCY)',
+    label: 'ER',
     labelTh: 'ห้องฉุกเฉินและวิกฤต',
-    code: 'DEPT-ER',
+    code: '',
     category: 'department',
     categoryLabel: 'EXAM DEPT',
-    x: 378,
-    y: 120
+    x: 365,
+    y: 145
   },
   examSp: {
     id: 'examSp',
     label: 'SP. CLINIC',
-    labelTh: 'คลินิกเฉพาะทาง (Special)',
-    code: 'DEPT-SP',
+    labelTh: 'คลินิกเฉพาะทาง',
+    code: '',
     category: 'department',
     categoryLabel: 'EXAM DEPT',
-    x: 565,
-    y: 120
+    x: 555,
+    y: 145
   },
   surgery: {
     id: 'surgery',
     label: 'SURGERY',
     labelTh: 'ห้องผ่าตัดและศัลยกรรม',
-    code: 'DEPT-SURG',
+    code: '',
     category: 'department',
     categoryLabel: 'EXAM DEPT',
-    x: 755,
-    y: 120
+    x: 735,
+    y: 145
   },
   examGeneral: {
     id: 'examGeneral',
     label: 'EXAM ROOM (GENERAL)',
-    labelTh: 'ห้องตรวจทั่วไป (Zone A 1-3, Zone B 1-3)',
-    code: 'DEPT-GEN',
+    labelTh: 'ห้องตรวจทั่วไป',
+    code: '',
     category: 'department',
     categoryLabel: 'EXAM DEPT',
-    x: 565,
-    y: 295,
+    x: 555,
+    y: 310,
     width: 64,
     height: 30,
     zones: [
@@ -201,61 +201,61 @@ export const STATIONS: Record<string, StationNode> = {
     id: 'xrayUsg',
     label: 'XRAY / USG',
     labelTh: 'เอกซเรย์และอัลตราซาวด์',
-    code: 'SUP-IMG',
+    code: '',
     category: 'support',
     categoryLabel: 'SUPPORT UNIT',
-    x: 565,
-    y: 500
+    x: 555,
+    y: 485
   },
   txRoom: {
     id: 'txRoom',
     label: 'TX ROOM',
     labelTh: 'จัดยาฉีด / ฉีดยา / หัตถการ',
-    code: 'SUP-TX',
+    code: '',
     category: 'support',
     categoryLabel: 'SUPPORT UNIT',
-    x: 755,
-    y: 295
+    x: 735,
+    y: 485
   },
   rxRoom: {
     id: 'rxRoom',
     label: 'RX ROOM',
-    labelTh: 'ห้องจัดยา / นำกลับ',
-    code: 'SUP-RX',
+    labelTh: 'ห้องจัดยานำกลับ',
+    code: '',
     category: 'support',
     categoryLabel: 'SUPPORT UNIT',
     x: 905,
-    y: 185
+    y: 170
   },
   cashier: {
     id: 'cashier',
     label: 'CASHIER',
-    labelTh: 'การเงิน / เก็บเงิน / Discharge',
-    code: 'SUP-CASH',
+    labelTh: 'เก็บเงิน / ใบเสร็จ / check-out',
+    code: '',
     category: 'support',
     categoryLabel: 'SUPPORT UNIT',
     x: 905,
-    y: 425
+    y: 485
   },
   pharmacy: {
     id: 'pharmacy',
     label: 'PHARMACY',
-    labelTh: 'ห้องจ่ายยา / รับยากลับบ้าน',
-    code: 'SUP-PHARM',
+    labelTh: 'ห้องจ่ายยา / รับยา',
+    code: '',
     category: 'support',
     categoryLabel: 'SUPPORT UNIT',
-    x: 1045,
-    y: 295
+    x: 905,
+    y: 310
   },
   exit: {
     id: 'exit',
     label: 'EXIT',
     labelTh: 'ทางออก / เสร็จสิ้นการรักษา',
-    code: 'MAIN-OUT',
+    code: '',
     category: 'main',
     categoryLabel: 'MAIN FLOW',
-    x: 1045,
-    y: 490
+    x: 1055,
+    y: 310
   }
 };
 
@@ -269,49 +269,49 @@ export const STATION_LANES: StationLane[] = [
     from: 'entrance',
     to: 'registration',
     stream: 'owner',
-    d: 'M 125 305 L 190 305'
+    d: 'M 125 310 L 185 310'
   },
   {
     id: 'owner:registration>waitingHall',
     from: 'registration',
     to: 'waitingHall',
     stream: 'owner',
-    d: 'M 266 305 L 340 305'
+    d: 'M 265 310 L 325 310'
   },
   {
     id: 'owner:waitingHall>examGeneral',
     from: 'waitingHall',
     to: 'examGeneral',
     stream: 'owner',
-    d: 'M 416 302 L 502 294'
+    d: 'M 405 310 L 495 310'
   },
   {
     id: 'owner:examGeneral>txRoom',
     from: 'examGeneral',
     to: 'txRoom',
     stream: 'owner',
-    d: 'M 628 294 L 716 294'
+    d: 'M 605 335 L 695 460'
   },
   {
     id: 'owner:txRoom>cashier',
     from: 'txRoom',
     to: 'cashier',
     stream: 'owner',
-    d: 'M 784 318 L 872 405'
+    d: 'M 775 485 L 865 485'
   },
   {
     id: 'owner:cashier>pharmacy',
     from: 'cashier',
     to: 'pharmacy',
     stream: 'owner',
-    d: 'M 936 404 L 1016 322'
+    d: 'M 905 455 L 905 345'
   },
   {
     id: 'owner:pharmacy>exit',
     from: 'pharmacy',
     to: 'exit',
     stream: 'owner',
-    d: 'M 1045 338 L 1045 458'
+    d: 'M 945 310 L 1015 310'
   },
 
   // --- STREAM 2: EXAM CARD & CLINICAL ORDER LANES (Parallel Offset Dashed Lanes) ---
@@ -320,35 +320,35 @@ export const STATION_LANES: StationLane[] = [
     from: 'registration',
     to: 'examGeneral',
     stream: 'exam-card',
-    d: 'M 264 290 Q 395 245 504 280'
+    d: 'M 260 295 Q 390 250 500 295'
   },
   {
     id: 'card:examGeneral>txRoom',
     from: 'examGeneral',
     to: 'txRoom',
     stream: 'exam-card',
-    d: 'M 628 280 L 716 280'
+    d: 'M 620 325 L 710 450'
   },
   {
     id: 'card:txRoom>rxRoom',
     from: 'txRoom',
     to: 'rxRoom',
     stream: 'exam-card',
-    d: 'M 784 276 L 874 202'
+    d: 'M 755 455 L 885 200'
   },
   {
     id: 'card:rxRoom>pharmacy',
     from: 'rxRoom',
     to: 'pharmacy',
     stream: 'exam-card',
-    d: 'M 936 202 L 1018 276'
+    d: 'M 925 195 L 925 285'
   },
   {
     id: 'card:rxRoom>cashier',
     from: 'rxRoom',
     to: 'cashier',
     stream: 'exam-card',
-    d: 'M 905 222 L 905 392'
+    d: 'M 945 195 L 945 455'
   },
 
   // --- STREAM 3: SIDEFLOW & SPECIALTY LANES (Purple Parallel Lanes) ---
@@ -357,35 +357,42 @@ export const STATION_LANES: StationLane[] = [
     from: 'examGeneral',
     to: 'xrayUsg',
     stream: 'sideflow',
-    d: 'M 552 395 L 552 468'
+    d: 'M 540 345 L 540 455'
   },
   {
     id: 'sideflow:xrayUsg>examGeneral',
     from: 'xrayUsg',
     to: 'examGeneral',
     stream: 'sideflow',
-    d: 'M 578 468 L 578 395'
+    d: 'M 570 455 L 570 345'
+  },
+  {
+    id: 'sideflow:registration>examEr',
+    from: 'registration',
+    to: 'examEr',
+    stream: 'sideflow',
+    d: 'M 255 285 L 335 170'
   },
   {
     id: 'sideflow:waitingHall>examEr',
     from: 'waitingHall',
     to: 'examEr',
     stream: 'sideflow',
-    d: 'M 378 275 L 378 158'
+    d: 'M 365 280 L 365 175'
   },
   {
     id: 'sideflow:waitingHall>examSp',
     from: 'waitingHall',
     to: 'examSp',
     stream: 'sideflow',
-    d: 'M 405 276 L 535 150'
+    d: 'M 395 280 L 525 165'
   },
   {
     id: 'sideflow:examGeneral>surgery',
     from: 'examGeneral',
     to: 'surgery',
     stream: 'sideflow',
-    d: 'M 595 262 L 725 150'
+    d: 'M 585 280 L 705 165'
   },
 
   // --- STREAM 4: SYSTEM AUTOMATED CONTROL LANES (Green Dotted Signal Lanes) ---
@@ -394,21 +401,21 @@ export const STATION_LANES: StationLane[] = [
     from: 'examGeneral',
     to: 'waitingHall',
     stream: 'system',
-    d: 'M 502 312 L 416 315'
+    d: 'M 495 320 L 405 320'
   },
   {
     id: 'system:cashier>pharmacy',
     from: 'cashier',
     to: 'pharmacy',
     stream: 'system',
-    d: 'M 946 416 L 1026 332'
+    d: 'M 885 455 L 885 345'
   },
   {
     id: 'system:cashier>registration',
     from: 'cashier',
     to: 'registration',
     stream: 'system',
-    d: 'M 868 442 Q 565 568 245 348'
+    d: 'M 865 500 Q 545 575 255 335'
   }
 ];
 
@@ -1311,7 +1318,7 @@ export const WORKFLOWS: WorkflowItem[] = [
             roleLabel: 'STAFF (PHARM)',
             title: 'Dispense Meds',
             detail: 'ส่งมอบยา + แนะนำวิธีใช้',
-            offsetX: 0,
+            offsetX: -25,
             offsetY: -68
           },
           {
@@ -1321,8 +1328,8 @@ export const WORKFLOWS: WorkflowItem[] = [
             roleLabel: 'PET & OWNER',
             title: 'Completed',
             detail: 'รับยากลับบ้าน (Exit)',
-            offsetX: -120,
-            offsetY: -45
+            offsetX: 25,
+            offsetY: -68
           }
         ],
         characterImage: '/images/blueprint/pharmacy.png',
