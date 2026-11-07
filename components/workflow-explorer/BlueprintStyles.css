@@ -68,13 +68,15 @@
 
 .pe-logo-frame {
   position: relative;
-  width: 56px;
-  height: 46px;
+  width: 52px;
+  height: 52px;
   border: 1px solid var(--line);
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--panel-head);
+  padding: 1px;
+  border-radius: 2px;
 }
 
 .pe-logo-frame .corner {
@@ -503,35 +505,49 @@
 .pe-legend {
   display: flex;
   align-items: center;
-  gap: 14px;
-  font-size: 12px;
+  gap: 12px;
+  font-size: 11.5px;
   font-weight: 600;
   letter-spacing: 0.01em;
   color: var(--ink-soft);
+  flex-wrap: wrap;
 }
 
 .pe-legend-item {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .pe-legend-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
+  display: inline-block;
+  shrink: 0;
 }
-.pe-legend-dot.blue {
-  background: var(--blue);
+.pe-legend-dot.owner {
+  background: #8c5828;
 }
+.pe-legend-dot.staff,
 .pe-legend-dot.amber {
-  background: var(--amber);
+  background: #d97706;
 }
-.pe-legend-dot.green {
-  background: var(--green);
+.pe-legend-dot.dvm,
+.pe-legend-dot.blue {
+  background: #0284c7;
 }
+.pe-legend-dot.sideflow,
 .pe-legend-dot.violet {
-  background: var(--violet);
+  background: #8b5cf6;
+}
+.pe-legend-dot.system,
+.pe-legend-dot.green {
+  background: #16a34a;
+}
+.pe-legend-dot.alarm,
+.pe-legend-dot.orange {
+  background: #ea580c;
 }
 
 .pe-ctrls {

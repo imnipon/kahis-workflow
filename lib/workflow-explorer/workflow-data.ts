@@ -1,4 +1,6 @@
-export type WorkflowGroup = 'all' | 'clinical' | 'exam-card' | 'orders';
+export type WorkflowGroup = 'clinical' | 'exam-card';
+
+export type RoleTone = 'owner' | 'staff' | 'dvm' | 'sideflow' | 'system' | 'alarm';
 
 export interface UIWireframeItem {
   id: string;
@@ -8,24 +10,63 @@ export interface UIWireframeItem {
   badgeLabel?: string;
 }
 
+export interface AnimatedPacketSpec {
+  id: string;
+  stream: 'owner' | 'exam-card' | 'system' | 'sideflow';
+  tone: RoleTone;
+  laneId: string;
+  fromNode: string;
+  toNode: string;
+  tag: string;
+  title: string;
+  fields: Array<{ k: string; v: string }>;
+  stopOffsetX?: number;
+  stopOffsetY?: number;
+}
+
+export interface StationNoteSpec {
+  id: string;
+  nodeId: string;
+  tone: RoleTone;
+  roleLabel: string;
+  title: string;
+  detail: string;
+  offsetY?: number;
+  offsetX?: number;
+}
+
 export interface WorkflowStep {
   id: number;
   title: string;
   titleEn: string;
   subtitle: string;
   actor: string;
-  actorType: 'owner' | 'staff' | 'dvm' | 'system';
+  actorType: RoleTone;
   target: string;
   module: string;
+  output: string;
   action: string;
   refCode: string;
   time: string;
   fromNode: string;
   toNode: string;
   laneId: string;
-  badgeColor: 'blue' | 'amber' | 'green' | 'violet';
+  activeLanes: string[];
+  badgeColor: RoleTone;
+  // Persistent Pet & Owner state for this step
+  petOwner: {
+    fromNode: string;
+    toNode: string;
+    statusLabel: string;
+    subZone?: string;
+  };
+  // Dynamic moving packets (Exam Card, System signals, Sideflow orders)
+  packets: AnimatedPacketSpec[];
+  // Dynamic station action callouts (.note style from protocol-explorer)
+  stationNotes: StationNoteSpec[];
   characterImage?: string;
   characterTitle?: string;
+  uiPromptLabel: string;
   uiWireframes: UIWireframeItem[];
   explanation: {
     title: string;
@@ -55,173 +96,408 @@ export interface StationNode {
   label: string;
   labelTh: string;
   code: string;
+  category: 'main' | 'department' | 'support';
+  categoryLabel: string;
   x: number;
   y: number;
-  type: 'entrance' | 'counter' | 'waiting' | 'room' | 'pharmacy';
+  width?: number;
+  height?: number;
+  zones?: Array<{
+    zoneTitle: string;
+    rooms: string[];
+  }>;
 }
 
 export interface StationLane {
   id: string;
   from: string;
   to: string;
+  stream: 'owner' | 'exam-card' | 'system' | 'sideflow';
   d: string;
-  marker?: string;
+  label?: string;
 }
 
-// 5 สถานีหลักในโรงพยาบาลสัตว์ (Isometric Grid Coordinates)
+// ============================================================================
+// 13 สถานีในผังโรงพยาบาลสัตว์ KAHIS (Main Spine + Clinical Depts + Support Units)
+// ============================================================================
 export const STATIONS: Record<string, StationNode> = {
   entrance: {
     id: 'entrance',
     label: 'ENTRANCE',
-    labelTh: 'ทางเข้า / จุดคัดกรอง',
-    code: 'GATE-01',
-    x: 130,
-    y: 410,
-    type: 'entrance'
+    labelTh: 'ทางเข้า / คัดกรอง',
+    code: 'MAIN-IN',
+    category: 'main',
+    categoryLabel: 'MAIN FLOW',
+    x: 88,
+    y: 310
   },
   registration: {
     id: 'registration',
     label: 'REGISTRATION',
-    labelTh: 'จุดลงทะเบียน / เวชระเบียน',
-    code: 'DESK-REG',
-    x: 320,
-    y: 330,
-    type: 'counter'
+    labelTh: 'เวชระเบียน / ทำประวัติ',
+    code: 'SUP-REG',
+    category: 'support',
+    categoryLabel: 'SUPPORT UNIT',
+    x: 228,
+    y: 310
   },
   waitingHall: {
     id: 'waitingHall',
     label: 'WAITING HALL',
-    labelTh: 'โถงรอตรวจผู้ป่วยนอก',
-    code: 'AREA-WAIT',
-    x: 510,
-    y: 410,
-    type: 'waiting'
+    labelTh: 'โถงพักคอย / จอเรียกคิว',
+    code: 'WAIT-HALL',
+    category: 'main',
+    categoryLabel: 'MAIN FLOW',
+    x: 378,
+    y: 310
   },
-  examRoom: {
-    id: 'examRoom',
-    label: 'EXAM ROOM 10',
-    labelTh: 'ห้องตรวจสัตวแพทย์ 10',
-    code: 'ROOM-10',
-    x: 690,
-    y: 260,
-    type: 'room'
+  examEr: {
+    id: 'examEr',
+    label: 'ER (EMERGENCY)',
+    labelTh: 'ห้องฉุกเฉินและวิกฤต',
+    code: 'DEPT-ER',
+    category: 'department',
+    categoryLabel: 'EXAM DEPT',
+    x: 378,
+    y: 120
   },
-  pharmacyCashier: {
-    id: 'pharmacyCashier',
-    label: 'PHARMACY & CASHIER',
-    labelTh: 'ห้องการเงินและจ่ายยานำกลับ',
-    code: 'DISP-FIN',
-    x: 820,
-    y: 410,
-    type: 'pharmacy'
+  examSp: {
+    id: 'examSp',
+    label: 'SP. CLINIC',
+    labelTh: 'คลินิกเฉพาะทาง (Special)',
+    code: 'DEPT-SP',
+    category: 'department',
+    categoryLabel: 'EXAM DEPT',
+    x: 565,
+    y: 120
+  },
+  surgery: {
+    id: 'surgery',
+    label: 'SURGERY',
+    labelTh: 'ห้องผ่าตัดและศัลยกรรม',
+    code: 'DEPT-SURG',
+    category: 'department',
+    categoryLabel: 'EXAM DEPT',
+    x: 755,
+    y: 120
+  },
+  examGeneral: {
+    id: 'examGeneral',
+    label: 'EXAM ROOM (GENERAL)',
+    labelTh: 'ห้องตรวจทั่วไป (Zone A 1-3, Zone B 1-3)',
+    code: 'DEPT-GEN',
+    category: 'department',
+    categoryLabel: 'EXAM DEPT',
+    x: 565,
+    y: 295,
+    width: 64,
+    height: 30,
+    zones: [
+      { zoneTitle: 'ZONE A', rooms: ['A1', 'A2', 'A3'] },
+      { zoneTitle: 'ZONE B', rooms: ['B1', 'B2', 'B3'] }
+    ]
+  },
+  xrayUsg: {
+    id: 'xrayUsg',
+    label: 'XRAY / USG',
+    labelTh: 'เอกซเรย์และอัลตราซาวด์',
+    code: 'SUP-IMG',
+    category: 'support',
+    categoryLabel: 'SUPPORT UNIT',
+    x: 565,
+    y: 500
+  },
+  txRoom: {
+    id: 'txRoom',
+    label: 'TX ROOM',
+    labelTh: 'จัดยาฉีด / ฉีดยา / หัตถการ',
+    code: 'SUP-TX',
+    category: 'support',
+    categoryLabel: 'SUPPORT UNIT',
+    x: 755,
+    y: 295
+  },
+  rxRoom: {
+    id: 'rxRoom',
+    label: 'RX ROOM',
+    labelTh: 'ห้องจัดยา / นำกลับ',
+    code: 'SUP-RX',
+    category: 'support',
+    categoryLabel: 'SUPPORT UNIT',
+    x: 905,
+    y: 185
+  },
+  cashier: {
+    id: 'cashier',
+    label: 'CASHIER',
+    labelTh: 'การเงิน / เก็บเงิน / Discharge',
+    code: 'SUP-CASH',
+    category: 'support',
+    categoryLabel: 'SUPPORT UNIT',
+    x: 905,
+    y: 425
+  },
+  pharmacy: {
+    id: 'pharmacy',
+    label: 'PHARMACY',
+    labelTh: 'ห้องจ่ายยา / รับยากลับบ้าน',
+    code: 'SUP-PHARM',
+    category: 'support',
+    categoryLabel: 'SUPPORT UNIT',
+    x: 1045,
+    y: 295
+  },
+  exit: {
+    id: 'exit',
+    label: 'EXIT',
+    labelTh: 'ทางออก / เสร็จสิ้นการรักษา',
+    code: 'MAIN-OUT',
+    category: 'main',
+    categoryLabel: 'MAIN FLOW',
+    x: 1045,
+    y: 490
   }
 };
 
-// เส้นทางประ (Lanes) ระหว่างสถานี
+// ============================================================================
+// Multi-Stream Lanes (แยกเส้นทางตามประเภทการไหล: Pet & Owner, Exam Card, System, Sideflow)
+// ============================================================================
 export const STATION_LANES: StationLane[] = [
+  // --- STREAM 1: PET & OWNER PHYSICAL WALKWAY LANES (Solid/Warm Brown) ---
   {
-    id: 'entrance>registration',
+    id: 'owner:entrance>registration',
     from: 'entrance',
     to: 'registration',
-    d: 'M 160 395 L 290 345'
+    stream: 'owner',
+    d: 'M 125 305 L 190 305'
   },
   {
-    id: 'registration>waitingHall',
+    id: 'owner:registration>waitingHall',
     from: 'registration',
     to: 'waitingHall',
-    d: 'M 350 345 L 480 395'
+    stream: 'owner',
+    d: 'M 266 305 L 340 305'
   },
   {
-    id: 'waitingHall>examRoom',
+    id: 'owner:waitingHall>examGeneral',
     from: 'waitingHall',
-    to: 'examRoom',
-    d: 'M 535 385 L 665 285'
+    to: 'examGeneral',
+    stream: 'owner',
+    d: 'M 416 302 L 502 294'
   },
   {
-    id: 'examRoom>pharmacyCashier',
-    from: 'examRoom',
-    to: 'pharmacyCashier',
-    d: 'M 715 285 L 795 385'
+    id: 'owner:examGeneral>txRoom',
+    from: 'examGeneral',
+    to: 'txRoom',
+    stream: 'owner',
+    d: 'M 628 294 L 716 294'
   },
   {
-    id: 'waitingHall>pharmacyCashier',
+    id: 'owner:txRoom>cashier',
+    from: 'txRoom',
+    to: 'cashier',
+    stream: 'owner',
+    d: 'M 784 318 L 872 405'
+  },
+  {
+    id: 'owner:cashier>pharmacy',
+    from: 'cashier',
+    to: 'pharmacy',
+    stream: 'owner',
+    d: 'M 936 404 L 1016 322'
+  },
+  {
+    id: 'owner:pharmacy>exit',
+    from: 'pharmacy',
+    to: 'exit',
+    stream: 'owner',
+    d: 'M 1045 338 L 1045 458'
+  },
+
+  // --- STREAM 2: EXAM CARD & CLINICAL ORDER LANES (Parallel Offset Dashed Lanes) ---
+  {
+    id: 'card:registration>examGeneral',
+    from: 'registration',
+    to: 'examGeneral',
+    stream: 'exam-card',
+    d: 'M 264 290 Q 395 245 504 280'
+  },
+  {
+    id: 'card:examGeneral>txRoom',
+    from: 'examGeneral',
+    to: 'txRoom',
+    stream: 'exam-card',
+    d: 'M 628 280 L 716 280'
+  },
+  {
+    id: 'card:txRoom>rxRoom',
+    from: 'txRoom',
+    to: 'rxRoom',
+    stream: 'exam-card',
+    d: 'M 784 276 L 874 202'
+  },
+  {
+    id: 'card:rxRoom>pharmacy',
+    from: 'rxRoom',
+    to: 'pharmacy',
+    stream: 'exam-card',
+    d: 'M 936 202 L 1018 276'
+  },
+  {
+    id: 'card:rxRoom>cashier',
+    from: 'rxRoom',
+    to: 'cashier',
+    stream: 'exam-card',
+    d: 'M 905 222 L 905 392'
+  },
+
+  // --- STREAM 3: SIDEFLOW & SPECIALTY LANES (Purple Parallel Lanes) ---
+  {
+    id: 'sideflow:examGeneral>xrayUsg',
+    from: 'examGeneral',
+    to: 'xrayUsg',
+    stream: 'sideflow',
+    d: 'M 552 395 L 552 468'
+  },
+  {
+    id: 'sideflow:xrayUsg>examGeneral',
+    from: 'xrayUsg',
+    to: 'examGeneral',
+    stream: 'sideflow',
+    d: 'M 578 468 L 578 395'
+  },
+  {
+    id: 'sideflow:waitingHall>examEr',
     from: 'waitingHall',
-    to: 'pharmacyCashier',
-    d: 'M 545 410 L 785 410'
+    to: 'examEr',
+    stream: 'sideflow',
+    d: 'M 378 275 L 378 158'
+  },
+  {
+    id: 'sideflow:waitingHall>examSp',
+    from: 'waitingHall',
+    to: 'examSp',
+    stream: 'sideflow',
+    d: 'M 405 276 L 535 150'
+  },
+  {
+    id: 'sideflow:examGeneral>surgery',
+    from: 'examGeneral',
+    to: 'surgery',
+    stream: 'sideflow',
+    d: 'M 595 262 L 725 150'
+  },
+
+  // --- STREAM 4: SYSTEM AUTOMATED CONTROL LANES (Green Dotted Signal Lanes) ---
+  {
+    id: 'system:examGeneral>waitingHall',
+    from: 'examGeneral',
+    to: 'waitingHall',
+    stream: 'system',
+    d: 'M 502 312 L 416 315'
+  },
+  {
+    id: 'system:cashier>pharmacy',
+    from: 'cashier',
+    to: 'pharmacy',
+    stream: 'system',
+    d: 'M 946 416 L 1026 332'
+  },
+  {
+    id: 'system:cashier>registration',
+    from: 'cashier',
+    to: 'registration',
+    stream: 'system',
+    d: 'M 868 442 Q 565 568 245 348'
   }
 ];
 
-// รายการ Workflows ทั้งหมด (โดยมี Workflow ที่ 1 พร้อมใช้งานสมบูรณ์)
+// ============================================================================
+// WORKFLOWS (9 ขั้นตอน ครอบคลุมการเคลื่อนที่ของ Pet & Owner, Exam Card และ System)
+// ============================================================================
 export const WORKFLOWS: WorkflowItem[] = [
   {
     id: 'service-journey',
-    title: 'PATIENT SERVICE JOURNEY',
-    titleEn: 'Outpatient Care & EMR Flow',
-    subtitle: 'กระบวนการเข้ารับบริการตรวจรักษา 9 ขั้นตอน',
+    title: 'General Patient Service Journey',
+    titleEn: 'General OPD, Exam Card & System Flow',
+    subtitle: 'การเคลื่อนที่ของ Pet & Owner, Exam Card และ System (9 ขั้นตอน)',
     group: 'clinical',
     status: 'active',
     totalSteps: 9,
     overviewDesc:
-      'ภาพรวมวงจรกระบวนการให้บริการตรวจรักษาสัตว์ป่วยนอก (OPD Clinical Journey) ตั้งแต่ก้าวแรกที่เจ้าของสัตว์เดินทางมาถึงโรงพยาบาลสัตว์ การค้นประวัติ/ออกคิว การเข้าห้องตรวจโดยสัตวแพทย์ การบันทึก EMR ผ่านระบบ Exam Card ใหม่ และการสั่งยาพร้อมชำระค่าบริการ',
+      'จำลองการทำงานแบบ Multi-Stream ของโรงพยาบาลสัตว์ KAHIS แยกเส้นทางการเดินของเจ้าของและสัตว์เลี้ยง (Pet & Owner) ที่แสดงตำแหน่งตลอดเวลา ออกจากเส้นทางการไหลของใบตรวจ (Exam Card), การส่งตรวจพิเศษ (Sideflow Xray/USG) และการทำงานอัตโนมัติของระบบ (System Queue Call & Case Discharge)',
     facts: [
-      { label: 'WORKFLOW', value: 'OPD Service Journey' },
-      { label: 'TOTAL STEPS', value: '9 Progressive Steps' },
-      { label: 'EMR MODULES', value: 'Search, Check-in, Exam Card, VPE, Assessment, Plan, Order' },
-      { label: 'INTEGRATION', value: 'KAHIS Vetroom ↔ Ward CCU' },
-      { label: 'ACTORS', value: 'Owner, Receptionist, DVM, Pharmacist, Cashier' }
+      { label: 'MAIN FLOW', value: 'Entrance > Reg > Waiting > Exam > Tx > Rx > Cashier > Pharm > Exit' },
+      { label: 'EXAM DEPTS', value: 'General (Zone A 1-3, Zone B 1-3), ER, Sp. Clinic, Surgery' },
+      { label: 'SUPPORT UNITS', value: 'Registration, Tx, Rx, Xray/USG, Cashier, Pharmacy' },
+      { label: '3 ACTIVE STREAMS', value: '1) Pet & Owner  2) Exam Card  3) KAHIS System' },
+      { label: 'SYSTEM AUTOMATION', value: 'Queue Screen/Audio Call & Auto Case Discharge (Visit Inactive)' }
     ],
     steps: [
       {
         id: 1,
-        title: '1. เจ้าของสัตว์พาสัตว์มา',
-        titleEn: 'Patient & Owner Arrival',
-        subtitle: 'มาถึงโรงพยาบาล เข้าสู่จุดคัดกรองเบื้องต้น',
-        actor: 'เจ้าของสัตว์ (Owner)',
+        title: '1. Entrance > Registration (รับสัตว์ป่วย & คัดกรอง)',
+        titleEn: 'Arrival & Initial Triage',
+        subtitle: 'Pet & Owner เดินจาก Entrance ไปยัง Registration (กรณีฉุกเฉินแยกไป ER)',
+        actor: 'Pet & Owner / Staff',
         actorType: 'owner',
-        target: 'จุดคัดกรอง (Entrance)',
-        module: 'GATE-01 / ARRIVAL',
-        action: 'พาสัตว์เลี้ยงมาถึงโรงพยาบาลสัตว์ มหาวิทยาลัยเกษตรศาสตร์',
-        refCode: 'ARRIV-001',
+        target: 'Registration (เวชระเบียน)',
+        module: 'ENTRANCE / TRIAGE',
+        output: 'data',
+        action: 'เจ้าของพาสัตว์เลี้ยงจาก Entrance เข้าติดต่อจุด Registration (คัดกรองเบื้องต้น)',
+        refCode: 'ARRIV-GATE01',
         time: '0.000s',
         fromNode: 'entrance',
         toNode: 'registration',
-        laneId: 'entrance>registration',
-        badgeColor: 'blue',
+        laneId: 'owner:entrance>registration',
+        activeLanes: ['owner:entrance>registration'],
+        badgeColor: 'owner',
+        petOwner: {
+          fromNode: 'entrance',
+          toNode: 'registration',
+          statusLabel: 'เดินเข้าสู่จุดเวชระเบียน (Registration)'
+        },
+        packets: [
+          {
+            id: 'pkt-step1-owner',
+            stream: 'owner',
+            tone: 'owner',
+            laneId: 'owner:entrance>registration',
+            fromNode: 'entrance',
+            toNode: 'registration',
+            tag: 'PET & OWNER',
+            title: 'HN 65008888 (Poodle)',
+            fields: [
+              { k: 'FROM', v: 'Entrance' },
+              { k: 'TO', v: 'Registration' }
+            ]
+          }
+        ],
+        stationNotes: [
+          {
+            id: 'note-step1-alarm',
+            nodeId: 'entrance',
+            tone: 'alarm',
+            roleLabel: 'ALARM',
+            title: 'ER Fast-Track',
+            detail: 'เคสวิกฤต ส่งตรง ER',
+            offsetX: -28,
+            offsetY: -66
+          },
+          {
+            id: 'note-step1-staff',
+            nodeId: 'registration',
+            tone: 'staff',
+            roleLabel: 'STAFF',
+            title: 'Triage & Search',
+            detail: 'ค้นหา HN / คัดกรอง',
+            offsetX: 32,
+            offsetY: -66
+          }
+        ],
         characterImage: '/images/blueprint/pet.png',
-        characterTitle: 'เจ้าของสัตว์อุ้มสุนัขพุดเดิ้ล (HN 65008888)',
-        uiWireframes: [],
-        explanation: {
-          title: 'การเดินทางมาถึงและคัดกรองผู้ป่วย',
-          role: 'เจ้าของสัตว์เลี้ยง (Pet Owner) & เจ้าหน้าที่คัดกรอง',
-          location: 'บริเวณประตูทางเข้าหลักโรงพยาบาลสัตว์',
-          systemUsed: 'ระบบคัดกรองเบื้องต้น (Triage & Walk-in)',
-          clinicalNote:
-            'เจ้าของพาสัตว์เลี้ยง (เช่น สุนัขพันธุ์ Poodle อายุ 5 ปี) เดินทางมาถึงโรงพยาบาล เข้าสู่จุดต้อนรับเพื่อเตรียมติดต่อทำประวัติหรือค้นหาประวัติเดิม',
-          keyPoints: [
-            'เตรียมข้อมูลสัตว์เลี้ยง: ชื่อสัตว์, หมายเลขประจำตัวเจ้าของ, บัตรประชาชน',
-            'ประเมินความเร่งด่วน: หากมีภาวะวิกฤตจะส่งต่อหน่วยฉุกเฉิน (Emergency) ทันที',
-            'เคสทั่วไปเดินต่อไปยังจุดเวชระเบียนเพื่อค้นประวัติ'
-          ]
-        }
-      },
-      {
-        id: 2,
-        title: '2. ติดต่อเจ้าหน้าที่จุดลงทะเบียน',
-        titleEn: 'Registration & HN Search',
-        subtitle: 'ค้นหาประวัติสัตว์เดิม หรือสร้างประวัติใหม่ในระบบ',
-        actor: 'เจ้าหน้าที่เวชระเบียน (Staff)',
-        actorType: 'staff',
-        target: 'ระบบค้นหาผู้ป่วย (Search HN)',
-        module: 'KAHIS SEARCH HN',
-        action: 'ค้นหา HN ด้วยชื่อสัตว์, เจ้าของ หรือเบอร์โทรศัพท์',
-        refCode: 'SEARCH-65008888',
-        time: '0.015s',
-        fromNode: 'entrance',
-        toNode: 'registration',
-        laneId: 'entrance>registration',
-        badgeColor: 'amber',
-        characterImage: '/images/blueprint/registration.png',
-        characterTitle: 'เจ้าหน้าที่เคาน์เตอร์เวชระเบียน',
+        characterTitle: 'เจ้าของสัตว์อุ้มสุนัขพุดเดิ้ล (HN 65008888) เข้าจุดลงทะเบียน',
+        uiPromptLabel: 'ดูหน้าจอค้นหาเวชระเบียน (Search HN UI)',
         uiWireframes: [
           {
             id: 'search-ui',
@@ -232,346 +508,865 @@ export const WORKFLOWS: WorkflowItem[] = [
           }
         ],
         explanation: {
-          title: 'ค้นหาเวชระเบียนเดิมในระบบ KAHIS',
-          role: 'เจ้าหน้าที่เวชระเบียน (Registration Officer)',
-          location: 'เคาน์เตอร์เวชระเบียน (Registration Desk)',
-          systemUsed: 'หน้าต่าง Search HN บนระบบ KAHIS',
+          title: 'การเดินทางมาถึงและคัดกรองแยกแผนก (Entrance > Registration)',
+          role: 'Pet & Owner และเจ้าหน้าที่คัดกรอง (Staff)',
+          location: 'Entrance เชื่อมต่อไปยัง Registration',
+          systemUsed: 'KAHIS Search HN & Triage Check',
           clinicalNote:
-            'เจ้าหน้าที่ตรวจสอบประวัติเดิมผ่านช่องค้นหา 5 มิติ (HN, ชื่อสัตว์, ชื่อ-สกุลเจ้าของ, รหัสประจำตัว) หากพบประวัติเดิมจะกดปุ่ม [Enter] เพื่อเข้าสู่กระบวนการ Check-in',
+            'จุดแสดงตำแหน่ง Pet & Owner เริ่มต้นที่ Entrance และเคลื่อนที่ไปยัง Registration โดยมีเจ้าหน้าที่คอยคัดกรอง หากสัตว์มีภาวะฉุกเฉินจะมีสัญญาณ Alarm ส่งแยกเข้าแผนก ER ทันที',
           keyPoints: [
-            'ช่องค้นหา HN, Pet Name, Owner Name & Surname',
-            'แถบแสดงผลลัพธ์ Search Result พร้อมระบุเพศ อายุ สายพันธุ์',
-            'ระบบเชื่อมต่อตรงกับฐานข้อมูลส่วนกลางของโรงพยาบาล'
+            'ค้นหาประวัติด้วย HN, ชื่อสัตว์ หรือชื่อเจ้าของที่เคาน์เตอร์ Registration',
+            'คัดกรองแผนกตรวจ: General (ทั่วไป), ER (ฉุกเฉิน), Sp. Clinic (เฉพาะทาง)',
+            'จุดสีน้ำตาล Pet & Owner แสดงตำแหน่งจริงของสัตว์และเจ้าของบนแผนผังตลอดเวลา'
           ]
         }
       },
       {
-        id: 3,
-        title: '3. เจ้าหน้าที่กรอกข้อมูล Check-in',
-        titleEn: 'Check-in & Queue Issuance',
-        subtitle: 'บันทึกอาการเบื้องต้น ชั่งน้ำหนัก และออกหมายเลขคิว',
-        actor: 'เจ้าหน้าที่เวชระเบียน (Staff)',
+        id: 2,
+        title: '2. Registration > Waiting Hall (ออก Visit No. & Exam Card)',
+        titleEn: 'Check-in, Visit No. Active & Exam Card Dispatch',
+        subtitle: 'Staff ทำ Check-in, System เปิด Visit No. (Active) และส่ง Exam Card ล่วงหน้า',
+        actor: 'Staff / System',
         actorType: 'staff',
-        target: 'ระบบคิว (Queue Management)',
-        module: 'KAHIS CHECK-IN MODAL',
-        action: 'ลงทะเบียนเข้าตรวจ เลือกกลุ่มอายุรกรรม (MA) และพิมพ์บัตรคิว',
-        refCode: 'QUEUE-WA001',
-        time: '0.030s',
+        target: 'Waiting Hall & Exam Room',
+        module: 'CHECK-IN / VISIT ACTIVE',
+        output: 'Q slip',
+        action: 'ออก Visit No. (Active) ส่ง Exam Card เข้าห้องตรวจ ส่วน Pet & Owner ไปรอที่ Waiting Hall',
+        refCode: 'VN-690315-ACT',
+        time: '0.018s',
         fromNode: 'registration',
         toNode: 'waitingHall',
-        laneId: 'registration>waitingHall',
-        badgeColor: 'amber',
+        laneId: 'owner:registration>waitingHall',
+        activeLanes: ['owner:registration>waitingHall', 'card:registration>examGeneral'],
+        badgeColor: 'staff',
+        petOwner: {
+          fromNode: 'registration',
+          toNode: 'waitingHall',
+          statusLabel: 'นั่งรอเรียกคิวที่ Waiting Hall (คิว WA001)'
+        },
+        packets: [
+          {
+            id: 'pkt-step2-owner',
+            stream: 'owner',
+            tone: 'owner',
+            laneId: 'owner:registration>waitingHall',
+            fromNode: 'registration',
+            toNode: 'waitingHall',
+            tag: 'PET & OWNER',
+            title: 'Queue WA001 -> Waiting',
+            fields: [
+              { k: 'WEIGHT', v: '0.89 kg' },
+              { k: 'WAIT AT', v: 'Waiting Hall' }
+            ]
+          },
+          {
+            id: 'pkt-step2-card',
+            stream: 'exam-card',
+            tone: 'dvm',
+            laneId: 'card:registration>examGeneral',
+            fromNode: 'registration',
+            toNode: 'examGeneral',
+            tag: 'EXAM CARD',
+            title: 'Exam Card -> Zone A',
+            fields: [
+              { k: 'VISIT NO', v: 'ACTIVE' },
+              { k: 'TARGET', v: 'General Zone A' }
+            ],
+            stopOffsetX: 22,
+            stopOffsetY: -68
+          }
+        ],
+        stationNotes: [
+          {
+            id: 'note-step2-staff',
+            nodeId: 'registration',
+            tone: 'staff',
+            roleLabel: 'STAFF',
+            title: 'Check-in',
+            detail: 'บันทึก นน. อาการ Q no',
+            offsetX: -32,
+            offsetY: -66
+          },
+          {
+            id: 'note-step2-sys',
+            nodeId: 'waitingHall',
+            tone: 'system',
+            roleLabel: 'SYSTEM',
+            title: 'Visit Active',
+            detail: 'Sent data to station',
+            offsetX: 0,
+            offsetY: -66
+          }
+        ],
         characterImage: '/images/blueprint/registration.png',
-        characterTitle: 'เจ้าหน้าที่บันทึก Check-in',
+        characterTitle: 'เจ้าหน้าที่เวชระเบียนลงทะเบียน Check-in และออกคิวตรวจ',
+        uiPromptLabel: 'ดูหน้าจอลงทะเบียน Check-in (Check-in Modal UI)',
         uiWireframes: [
           {
             id: 'checkin-ui',
             title: 'Check-in Modal Wireframe',
             image: '/images/blueprint/checkin.jpg',
             tag: 'CHECK-IN UI',
-            badgeLabel: 'Registration & Complaints'
+            badgeLabel: 'Registration & Queue'
+          },
+          {
+            id: 'search-ui-2',
+            title: 'Search HN Wireframe',
+            image: '/images/blueprint/search.jpg',
+            tag: 'SEARCH UI',
+            badgeLabel: 'Patient Lookup'
           }
         ],
         explanation: {
-          title: 'ลงทะเบียนเข้ารับบริการและบันทึกอาการสำคัญ',
-          role: 'เจ้าหน้าที่เวชระเบียน (Registration Staff)',
-          location: 'เคาน์เตอร์เวชระเบียน (Registration Desk)',
-          systemUsed: 'หน้าต่าง Check-in (ลงทะเบียนเข้ารับบริการ)',
+          title: 'การแยกเส้นทางระหว่าง Pet & Owner และ Exam Card',
+          role: 'เจ้าหน้าที่เวชระเบียน (Staff) & ระบบ KAHIS (System)',
+          location: 'Registration -> Waiting Hall & Exam Room (General)',
+          systemUsed: 'KAHIS Check-in & Queue Dispatcher',
           clinicalNote:
-            'บันทึกข้อมูล 3 แผงหลัก: ข้อมูลการลงทะเบียน (กลุ่มอายุรกรรม MA, ชั่งน้ำหนักสัตว์ 0.89 กก.), ตรวจเช็กอาการสำคัญ (Client Complaint เช่น ซึม เบื่ออาหาร อาเจียน) และระบุโรงพยาบาลที่ส่งต่อ',
+            'ในขั้นนี้จะเห็นเส้นทางวิ่งพร้อมกัน 2 เส้น: (1) Pet & Owner เดินจาก Registration ไปนั่งรอที่ Waiting Hall และ (2) ระบบส่ง Exam Card อิเล็กทรอนิกส์วิ่งตรงเข้าสู่คิวห้องตรวจ Exam Room (General - Zone A) พร้อมเปิดสถานะ Visit No. เป็น Active',
           keyPoints: [
-            'กำหนดประเภทการลงทะเบียน: A : อายุรกรรมทั่วไป (MA)',
-            'บันทึกน้ำหนักตัวล่าสุด (Weight kg) และโลเคชั่นรอตรวจ (WA001)',
-            'ออกหมายเลขคิวเพื่อให้เจ้าของพาสัตว์ไปนั่งรอหน้าหน่วย'
+            'Staff บันทึกน้ำหนักสัตว์ อาการสำคัญ และเลือกแผนกตรวจ (General / Sp. Clinic / ER)',
+            'System สร้างหมายเลข Visit No. สถานะ ACTIVE',
+            'Exam Card ถูกส่งเข้า Worklist ของห้องตรวจทันทีโดยไม่ต้องถือแฟ้มกระดาษ'
+          ]
+        }
+      },
+      {
+        id: 3,
+        title: '3. DVM กดเรียกคิว > System เปลี่ยนจอและส่งเสียงเรียกเข้า Exam Room',
+        titleEn: 'DVM Queue Call & System Audio/Display Broadcast',
+        subtitle: 'หมอกดเรียกคิวจาก Zone A ห้อง 1 ระบบเปลี่ยนหน้าจอที่ Waiting Hall และส่งเสียงเรียก',
+        actor: 'DVM / System / Owner',
+        actorType: 'system',
+        target: 'Exam Room (General - Zone A #1)',
+        module: 'QUEUE CALL / DISPLAY & AUDIO',
+        output: 'data',
+        action: 'สัตวแพทย์กด Call Queue -> ระบบเปลี่ยนหน้าจอ TV + ส่งเสียงเรียก -> Pet & Owner เข้าห้องตรวจ Zone A #1',
+        refCode: 'CALL-ZONE-A1',
+        time: '0.035s',
+        fromNode: 'waitingHall',
+        toNode: 'examGeneral',
+        laneId: 'owner:waitingHall>examGeneral',
+        activeLanes: ['system:examGeneral>waitingHall', 'owner:waitingHall>examGeneral'],
+        badgeColor: 'system',
+        petOwner: {
+          fromNode: 'waitingHall',
+          toNode: 'examGeneral',
+          statusLabel: 'เดินเข้าห้องตรวจ Exam Room (General · Zone A ห้อง 1)',
+          subZone: 'A1'
+        },
+        packets: [
+          {
+            id: 'pkt-step3-sys',
+            stream: 'system',
+            tone: 'system',
+            laneId: 'system:examGeneral>waitingHall',
+            fromNode: 'examGeneral',
+            toNode: 'waitingHall',
+            tag: 'SYSTEM CALL',
+            title: 'TV Display + Audio Call',
+            fields: [
+              { k: 'QUEUE', v: 'WA001' },
+              { k: 'ROOM', v: 'Zone A - No. 1' }
+            ],
+            stopOffsetX: 0,
+            stopOffsetY: 78
+          },
+          {
+            id: 'pkt-step3-owner',
+            stream: 'owner',
+            tone: 'owner',
+            laneId: 'owner:waitingHall>examGeneral',
+            fromNode: 'waitingHall',
+            toNode: 'examGeneral',
+            tag: 'PET & OWNER',
+            title: 'Enter Zone A - No. 1',
+            fields: [
+              { k: 'DEPT', v: 'General Exam' },
+              { k: 'ZONE', v: 'Zone A (#1)' }
+            ]
+          }
+        ],
+        stationNotes: [
+          {
+            id: 'note-step3-sys',
+            nodeId: 'waitingHall',
+            tone: 'system',
+            roleLabel: 'SYSTEM',
+            title: 'Queue Display',
+            detail: 'ขึ้นจอ TV + เสียงเรียกคิว',
+            offsetX: -14,
+            offsetY: -68
+          },
+          {
+            id: 'note-step3-dvm',
+            nodeId: 'examGeneral',
+            tone: 'dvm',
+            roleLabel: 'DVM',
+            title: 'Call Queue',
+            detail: 'กดเรียกคิวเข้า Zone A #1',
+            offsetX: 14,
+            offsetY: -68
+          }
+        ],
+        characterImage: '/images/blueprint/examination-1.png',
+        characterTitle: 'ระบบประกาศเรียกคิวเข้าห้องตรวจ General (Zone A ห้อง 1)',
+        uiPromptLabel: 'ดูหน้าจอตรวจสัญญาณชีพ (VPE UI)',
+        uiWireframes: [
+          {
+            id: 'vpe-form-preview',
+            title: 'Vital Sign & Physical Exam Form',
+            image: '/images/blueprint/vpe.jpg',
+            tag: 'VPE FORM UI',
+            badgeLabel: 'Room Zone A-1 Ready'
+          }
+        ],
+        explanation: {
+          title: 'สัตวแพทย์กดเรียกคิว และระบบเปลี่ยนหน้าจอพร้อมเสียงประกาศอัตโนมัติ',
+          role: 'สัตวแพทย์ (DVM), ระบบเรียกคิวอัจฉริยะ (System) & Pet Owner',
+          location: 'Exam Room (General: Zone A 1,2,3 / Zone B 1,2,3) <-> Waiting Hall',
+          systemUsed: 'KAHIS Queue Call & Digital Signage Audio Server',
+          clinicalNote:
+            'เมื่อสัตวแพทย์ในห้องตรวจ Exam Room (General - Zone A ห้อง 1) กดปุ่มเรียกคิว สัญญาณ System สีเขียวจะวิ่งย้อนไปยัง Waiting Hall เพื่ออัปเดตหน้าจอ TV และส่งเสียงพูดเรียกคิวอัตโนมัติ จากนั้น Pet & Owner จึงเดินเข้าสู่ห้องตรวจ Zone A ห้อง 1',
+          keyPoints: [
+            'รองรับห้องตรวจ General แบ่งเป็น Zone A (ห้อง 1, 2, 3) และ Zone B (ห้อง 1, 2, 3)',
+            'สัญญาณ System ทำงานอัตโนมัติทันทีที่หมอกดเรียกคิว',
+            'เจ้าของและสัตว์เลี้ยงเคลื่อนที่จาก Waiting Hall เข้าสู่ Exam Room (Zone A #1)'
           ]
         }
       },
       {
         id: 4,
-        title: '4. เจ้าของสัตว์พาสัตว์ไปรอที่จุดรอตรวจ',
-        titleEn: 'Proceed to Waiting Area',
-        subtitle: 'รอเรียกคิวบริเวณโถงพักคอยประจำหน่วยตรวจ',
-        actor: 'เจ้าของสัตว์ (Owner)',
-        actorType: 'owner',
-        target: 'โถงพักคอย (Waiting Area)',
-        module: 'WAITING HALL / QUEUE DISP',
-        action: 'เจ้าของพาสัตว์เลี้ยงนั่งรอเรียกคิวหน้าห้องตรวจอายุรกรรม',
-        refCode: 'WAIT-WA001',
-        time: '0.045s',
-        fromNode: 'registration',
-        toNode: 'waitingHall',
-        laneId: 'registration>waitingHall',
-        badgeColor: 'blue',
-        characterImage: '/images/blueprint/pet.png',
-        characterTitle: 'เจ้าของอุ้มสุนัขรอบริเวณโถง',
-        uiWireframes: [],
-        explanation: {
-          title: 'พักคอยและสังเกตอาการบริเวณโถงหน่วยตรวจ',
-          role: 'เจ้าของสัตว์เลี้ยง (Pet Owner) & สัตว์ป่วย',
-          location: 'โถงพักคอยหน่วยอายุรกรรม (Waiting Hall MA)',
-          systemUsed: 'จอแสดงหมายเลขคิวประจำหน่วย (Digital Queue Display)',
-          clinicalNote:
-            'เจ้าของถือบัตรคิว WA001 นั่งรอเรียกตรวจ โดยจอภาพหน้าห้องตรวจจะแสดงลำดับคิวและสถานะการเรียกแบบเรียลไทม์',
-          keyPoints: [
-            'นั่งรอในพื้นที่ที่จัดสรรตามประเภทสัตว์เลี้ยง (สุนัข/แมว/สัตว์พิเศษ)',
-            'สังเกตสัญญาณชีพเบื้องต้นขณะรอคอย (การหายใจ ระดับความรู้สึกตัว)',
-            'เตรียมตัวเข้าห้องตรวจเมื่อหมายเลขคิวปรากฏบนหน้าจอ'
-          ]
-        }
-      },
-      {
-        id: 5,
-        title: '5. เรียกเข้าห้องตรวจ พบหมอ',
-        titleEn: 'Queue Calling & Consultation',
-        subtitle: 'ระบบเรียกคิวเข้าสู่ห้องตรวจสัตวแพทย์',
-        actor: 'ระบบคิว & สัตวแพทย์ (DVM)',
-        actorType: 'system',
-        target: 'ห้องตรวจ 10 (Exam Room)',
-        module: 'QUEUE CALL → ROOM 10',
-        action: 'จอเรียกคิวประกาศ "คิว WA001 เชิญห้องตรวจ 10"',
-        refCode: 'CALL-ROOM10',
-        time: '0.060s',
-        fromNode: 'waitingHall',
-        toNode: 'examRoom',
-        laneId: 'waitingHall>examRoom',
-        badgeColor: 'green',
-        characterImage: '/images/blueprint/examination-1.png',
-        characterTitle: 'สัตวแพทย์ต้อนรับและนำสัตว์ขึ้นโต๊ะตรวจ',
-        uiWireframes: [],
-        explanation: {
-          title: 'เข้าสู่ห้องตรวจเพื่อเริ่มกระบวนการรักษา',
-          role: 'สัตวแพทย์ผู้ตรวจ (Attending Veterinarian) & ผู้ช่วย',
-          location: 'ห้องตรวจสัตวแพทย์ 10 (Examination Room 10)',
-          systemUsed: 'ระบบเรียกคิว KAHIS Queue & Vetroom Specimen',
-          clinicalNote:
-            'สัตวแพทย์เรียกเคสเข้าห้องตรวจ ต้อนรับเจ้าของสัตว์และนำสุนัขขึ้นบนโต๊ะตรวจร่างกาย เพื่อซักประวัติอย่างละเอียด',
-          keyPoints: [
-            'ตรวจสอบยืนยันตัวตนสัตว์ป่วย: ชื่อสัตว์, เพศ, อายุ, HN',
-            'ซักประวัติประธาน (Chief Complaint) และประวัติเดิม (History Taking)',
-            'นำสัตว์ขึ้นโต๊ะตรวจร่างกาย (Examination Table) ในบรรยากาศผ่อนคลาย'
-          ]
-        }
-      },
-      {
-        id: 6,
-        title: '6. หมอตรวจและรักษา',
-        titleEn: 'Physical Examination & VPE',
-        subtitle: 'ตรวจร่างกายตามระบบ วัดสัญญาณชีพ และบันทึกผล',
-        actor: 'สัตวแพทย์ (DVM)',
+        title: '4. Exam Room (General): หมอตรวจร่างกาย & บันทึก Exam Card',
+        titleEn: 'Clinical Examination & Exam Card 65:35 Documentation',
+        subtitle: 'ตรวจร่างกาย 20 ระบบ บันทึก Exam Card และลงรหัสวินิจฉัย SNOMED CT',
+        actor: 'DVM (สัตวแพทย์)',
         actorType: 'dvm',
-        target: 'โต๊ะตรวจร่างกาย (Exam Table)',
-        module: 'PHYSICAL EXAM & VPE',
-        action: 'ตรวจฟังเสียงหัวใจ/ปอด คลำช่องท้อง วัดสัญญาณชีพ และตรวจร่างกาย 20 ระบบ',
-        refCode: 'PE-VPE-01',
-        time: '0.075s',
-        fromNode: 'examRoom',
-        toNode: 'examRoom',
-        laneId: 'waitingHall>examRoom',
-        badgeColor: 'violet',
-        characterImage: '/images/blueprint/examination-1.png',
-        characterTitle: 'สัตวแพทย์ตรวจร่างกายสุนัขบนโต๊ะตรวจ',
+        target: 'Exam Room (Zone A #1)',
+        module: 'EXAM CARD 65:35 / VPE',
+        output: 'data',
+        action: 'ตรวจร่างกายวัดสัญญาณชีพ บันทึกผลลง Exam Card และสั่งตรวจเพิ่มเติม',
+        refCode: 'EC-6535-A1',
+        time: '0.052s',
+        fromNode: 'examGeneral',
+        toNode: 'examGeneral',
+        laneId: 'card:examGeneral>txRoom',
+        activeLanes: ['card:registration>examGeneral'],
+        badgeColor: 'dvm',
+        petOwner: {
+          fromNode: 'examGeneral',
+          toNode: 'examGeneral',
+          statusLabel: 'กำลังรับการตรวจใน Exam Room (Zone A ห้อง 1)',
+          subZone: 'A1'
+        },
+        packets: [],
+        stationNotes: [
+          {
+            id: 'note-step4-dvm',
+            nodeId: 'examGeneral',
+            tone: 'dvm',
+            roleLabel: 'DVM',
+            title: 'Exam Card',
+            detail: 'บันทึก VPE & Diagnosis',
+            offsetX: -92,
+            offsetY: -58
+          },
+          {
+            id: 'note-step4-alarm',
+            nodeId: 'examGeneral',
+            tone: 'alarm',
+            roleLabel: 'ALARM',
+            title: 'Clinical Alert',
+            detail: 'เตือนแพ้ยา / Vital ผิดปกติ',
+            offsetX: 92,
+            offsetY: -58
+          }
+        ],
+        characterImage: '/images/blueprint/dvm-comp.png',
+        characterTitle: 'สัตวแพทย์ตรวจร่างกายและบันทึก Exam Card 65:35 ในห้องตรวจ Zone A #1',
+        uiPromptLabel: 'ดูหน้าจอ Exam Card 65:35 & Assessment (6 หน้าจอ)',
         uiWireframes: [
+          {
+            id: 'examcard-editor',
+            title: 'Subjective & Systematic Exam Card Editor',
+            image: '/images/blueprint/examcard.jpg',
+            tag: 'EXAM CARD 65:35',
+            badgeLabel: 'Core 65:35 Form'
+          },
           {
             id: 'vpe-form',
             title: 'Vital Sign & Physical Exam Form',
             image: '/images/blueprint/vpe.jpg',
-            tag: 'VPE FORM UI',
+            tag: 'VPE FORM',
             badgeLabel: 'Core Vital Signs'
           },
           {
             id: 'vpe-table',
             title: 'Patient Vital History Table',
             image: '/images/blueprint/vpe-table.jpg',
-            tag: 'VPE TABLE UI',
+            tag: 'VPE TABLE',
             badgeLabel: 'Longitudinal Vitals'
-          }
-        ],
-        explanation: {
-          title: 'การตรวจร่างกายและการวัดสัญญาณชีพทางสัตวแพทย์',
-          role: 'สัตวแพทย์ประจำห้องตรวจ (Clinician)',
-          location: 'ห้องตรวจสัตวแพทย์ 10 บนโต๊ะตรวจร่างกาย',
-          systemUsed: 'KAHIS VPE & Physical Examination Module',
-          clinicalNote:
-            'ตรวจร่างกายครบวงจร: สัญญาณชีพหลัก (Temp, HR, RR, Pulse, Weight), ประเมินการขาดน้ำ (Hydration), ตรวจฟังเสียงหัวใจ (Heart Sound), และตรวจสอบระบบร่างกาย 20 ระบบ',
-          keyPoints: [
-            'ตรวจวัดสัญญาณชีพหลัก Core Vital Signs (HR, RR, Temp, CRT)',
-            'เปิดดูตารางเปรียบเทียบสัญญาณชีพย้อนหลัง (VPE Table 17 ครั้ง)',
-            'บันทึกจุดสังเกตเฉพาะระบบ (Systematic Physical Examination)'
-          ]
-        }
-      },
-      {
-        id: 7,
-        title: '7. หมอลงข้อมูลการตรวจและสั่งยาใน EMR',
-        titleEn: 'EMR Documentation & Orders',
-        subtitle: 'บันทึก Exam Card 65:35, ลงผลวินิจฉัย และวางแผนการรักษา',
-        actor: 'สัตวแพทย์ (DVM)',
-        actorType: 'dvm',
-        target: 'ระบบ KAHIS EMR',
-        module: 'EXAM CARD / EMR CORE',
-        action: 'บันทึก Exam Card, เลือก Diagnosis (SNOMED CT), สั่งแล็บและยาใน EMR',
-        refCode: 'EMR-CARD-4331',
-        time: '0.090s',
-        fromNode: 'examRoom',
-        toNode: 'examRoom',
-        laneId: 'examRoom>pharmacyCashier',
-        badgeColor: 'violet',
-        characterImage: '/images/blueprint/dvm-comp.png',
-        characterTitle: 'สัตวแพทย์กำลังบันทึกข้อมูลและสั่งงานในคอมพิวเตอร์',
-        uiWireframes: [
-          {
-            id: 'examcard-editor',
-            title: 'Subjective & Systematic Exam Card Editor',
-            image: '/images/blueprint/examcard.jpg',
-            tag: 'EXAM CARD EDITOR',
-            badgeLabel: 'Core 65:35 Form'
           },
           {
             id: 'assessment-editor',
             title: 'Assessment & Problem Diagnosis Terms (PDT)',
             image: '/images/blueprint/assessment.jpg',
-            tag: 'ASSESSMENT EDITOR',
+            tag: 'ASSESSMENT',
             badgeLabel: 'Diagnostic Synthesis'
           },
           {
             id: 'assessment-concept',
-            title: 'SNOMED CT Concept Search Modal',
+            title: 'SNOMED CT Concept Search',
             image: '/images/blueprint/assessment-concept.jpg',
-            tag: 'CONCEPT SEARCH UI',
+            tag: 'SNOMED CT',
             badgeLabel: 'Standard Terminology'
           },
           {
             id: 'assessment-table',
             title: 'Assessment Longitudinal Table',
             image: '/images/blueprint/assessment-table.jpg',
-            tag: 'ASSESSMENT TABLE UI',
+            tag: 'DIAG HISTORY',
             badgeLabel: 'Historical Diagnoses'
+          }
+        ],
+        explanation: {
+          title: 'การตรวจร่างกายและบันทึก Exam Card ภายในห้องตรวจ (Zone A ห้อง 1)',
+          role: 'สัตวแพทย์ประจำห้องตรวจ (DVM)',
+          location: 'Exam Room (General - Zone A ห้อง 1)',
+          systemUsed: 'KAHIS Exam Card 65:35, VPE & SNOMED CT Assessment',
+          clinicalNote:
+            'ขณะที่ Pet & Owner อยู่ภายในห้องตรวจ Zone A ห้อง 1 สัตวแพทย์จะทำการตรวจร่างกาย วัดสัญญาณชีพ และบันทึกข้อมูลลงใน Exam Card ดีไซน์ 65:35 พร้อมระบบแจ้งเตือน Alarm หากมีประวัติแพ้ยาหรือค่า Vital Signs เกินเกณฑ์',
+          keyPoints: [
+            'บันทึก Subjective & Objective 26 หัวข้อ พร้อม Live Summary ด้านขวา',
+            'เปรียบเทียบตารางสัญญาณชีพย้อนหลัง (VPE Longitudinal Table)',
+            'ระบุคำวินิจฉัยมาตรฐาน SNOMED CT และวางแผนการรักษา'
+          ]
+        }
+      },
+      {
+        id: 5,
+        title: '5. Sideflow: ส่งตรวจ Xray / USG (รังสีวินิจฉัย & อัลตราซาวด์)',
+        titleEn: 'Diagnostic Imaging Sideflow (X-ray & Ultrasonography)',
+        subtitle: 'ส่งตัวสัตว์และใบสั่งตรวจไปห้อง Xray/USG และส่งผลกลับห้องตรวจ',
+        actor: 'Sideflow (DVM & Imaging Staff)',
+        actorType: 'sideflow',
+        target: 'Xray / USG (Support Unit)',
+        module: 'SIDEFLOW / XRAY & USG',
+        output: 'Order slip',
+        action: 'ส่งใบสั่งตรวจและพาสัตว์ไปเอกซเรย์/อัลตราซาวด์ที่หน่วย Xray/USG ก่อนกลับมาประเมินผล',
+        refCode: 'IMG-XRAY-USG',
+        time: '0.068s',
+        fromNode: 'examGeneral',
+        toNode: 'xrayUsg',
+        laneId: 'sideflow:examGeneral>xrayUsg',
+        activeLanes: [
+          'sideflow:examGeneral>xrayUsg',
+          'sideflow:xrayUsg>examGeneral'
+        ],
+        badgeColor: 'sideflow',
+        petOwner: {
+          fromNode: 'examGeneral',
+          toNode: 'xrayUsg',
+          statusLabel: 'พาสัตว์ไปตรวจพิเศษที่ห้อง Xray / USG (Sideflow)'
+        },
+        packets: [
+          {
+            id: 'pkt-step5-sideflow-out',
+            stream: 'sideflow',
+            tone: 'sideflow',
+            laneId: 'sideflow:examGeneral>xrayUsg',
+            fromNode: 'examGeneral',
+            toNode: 'xrayUsg',
+            tag: 'SIDEFLOW ORDER',
+            title: 'X-ray & USG Request',
+            fields: [
+              { k: 'EXAM CARD', v: 'Attached' },
+              { k: 'STUDY', v: 'Abd USG + Thorax' }
+            ],
+            stopOffsetX: 98,
+            stopOffsetY: -62
           },
           {
+            id: 'pkt-step5-sideflow-back',
+            stream: 'sideflow',
+            tone: 'sideflow',
+            laneId: 'sideflow:xrayUsg>examGeneral',
+            fromNode: 'xrayUsg',
+            toNode: 'examGeneral',
+            tag: 'IMAGING RESULT',
+            title: 'DICOM & USG Report',
+            fields: [
+              { k: 'STATUS', v: 'Verified' },
+              { k: 'RETURN', v: 'Zone A (#1)' }
+            ],
+            stopOffsetX: 98,
+            stopOffsetY: -68
+          }
+        ],
+        stationNotes: [
+          {
+            id: 'note-step5-sideflow',
+            nodeId: 'xrayUsg',
+            tone: 'sideflow',
+            roleLabel: 'SIDEFLOW',
+            title: 'Xray / USG',
+            detail: 'ตรวจภาพวินิจฉัย + ส่งผล',
+            offsetX: -90,
+            offsetY: -62
+          },
+          {
+            id: 'note-step5-dvm',
+            nodeId: 'examGeneral',
+            tone: 'dvm',
+            roleLabel: 'DVM',
+            title: 'Review Plan',
+            detail: 'อ่านผลภาพ & สรุปแผน',
+            offsetX: -90,
+            offsetY: -68
+          }
+        ],
+        characterImage: '/images/blueprint/examination-1.png',
+        characterTitle: 'การส่งตรวจทางรังสีวินิจฉัยและอัลตราซาวด์ (Xray / USG Sideflow)',
+        uiPromptLabel: 'ดูหน้าจอวางแผนการตรวจรักษา (Plan UI)',
+        uiWireframes: [
+          {
             id: 'plan-editor',
-            title: 'Plan Editor (Hematology & Chemistry)',
+            title: 'Plan Editor (Diagnostic & Imaging Orders)',
             image: '/images/blueprint/plan.jpg',
-            tag: 'PLAN EDITOR UI',
-            badgeLabel: 'Clinical Orders'
+            tag: 'PLAN EDITOR',
+            badgeLabel: 'Diagnostic Orders'
           },
           {
             id: 'plan-table',
             title: 'All Patient Plans History Table',
             image: '/images/blueprint/plan-table.jpg',
-            tag: 'PLAN TABLE UI',
+            tag: 'PLAN TABLE',
             badgeLabel: 'Plan Tracking'
-          },
-          {
-            id: 'order-tx',
-            title: 'Quick Order Tx & Medication Cart',
-            image: '/images/blueprint/order.jpg',
-            tag: 'ORDER TX UI',
-            badgeLabel: 'Medication Prescription'
           }
         ],
         explanation: {
-          title: 'การบันทึกเวชระเบียนอิเล็กทรอนิกส์ครบวงจรใน EMR',
-          role: 'สัตวแพทย์ผู้ทำการรักษา (Veterinarian)',
-          location: 'โต๊ะทำงานสัตวแพทย์ หน้าจอคอมพิวเตอร์ KAHIS',
-          systemUsed: 'Exam Card Manager 65:35, Assessment PDT, Plan & Order Tx',
+          title: 'กระบวนการ Sideflow: ส่งตรวจ Xray และ Ultrasonography',
+          role: 'สัตวแพทย์ (DVM) และเจ้าหน้าที่รังสีวินิจฉัย (Xray/USG Support Unit)',
+          location: 'Exam Room (General) <-> Xray / USG',
+          systemUsed: 'KAHIS Plan Module & PACS / Ultrasound Reporting',
           clinicalNote:
-            'หัวใจสำคัญของระบบ: สัตวแพทย์กรอกฟอร์มตรวจร่างกาย 26 หัวข้อ, สังเคราะห์ปัญหา/การวินิจฉัยด้วยมาตรฐาน SNOMED CT, สร้างแผนการตรวจทางห้องปฏิบัติการ และสั่งจ่ายยานำกลับผ่านหน้าจอ Quick Order Tx',
+            'ในกรณีที่ต้องตรวจวินิจฉัยเพิ่มเติมด้วยภาพถ่ายรังสี (X-ray) หรืออัลตราซาวด์ (Ultrasonography) จะเกิดเส้นทาง Sideflow สีม่วงเชื่อมระหว่าง Exam Room และหน่วยสนับสนุน Xray/USG โดยทั้งตัวสัตว์และข้อมูล Exam Card จะเชื่อมโยงกันแบบไป-กลับ',
           keyPoints: [
-            'สัดส่วนใหม่ 65:35: ซ้ายกรอกฟอร์ม 26 ข้อ ขวาแสดง Live Detail Card ทันที',
-            'ผูกรหัสการวินิจฉัยสากล SNOMED CT ผ่านหน้าต่างค้นหา Concept Search',
-            'สั่งจ่ายยาผ่านตระกร้า Quick Order Tx ส่งคำสั่งตรงเข้าห้องยาทันที'
+            'สั่งตรวจผ่านโมดูล Plan ส่งใบสั่งอิเล็กทรอนิกส์ไปยังห้อง Xray/USG',
+            'รองรับการส่งต่อข้ามแผนก เช่น ส่งต่อห้องผ่าตัด (Surgery) หรือคลินิกเฉพาะทาง (Sp. Clinic)',
+            'ผลตรวจเชื่อมกลับเข้าสู่ Exam Card เพื่อให้หมอสรุปแผนการรักษาขั้นถัดไป'
           ]
         }
       },
       {
-        id: 8,
-        title: '8. เจ้าหน้าที่รับคำสั่งและจัดยา',
-        titleEn: 'Pharmacy Order Verification & Dispensing',
-        subtitle: 'ห้องยาตรวจสอบคำสั่งแพทย์ จัดเตรียมยาและฉลากยา',
-        actor: 'เภสัชกร / เจ้าหน้าที่ห้องยา (Staff)',
+        id: 6,
+        title: '6. Exam Room > Tx Room (จัดยาฉีด และ ฉีดยา/หัตถการ)',
+        titleEn: 'Treatment Room: Injectable Meds Prep & Procedures',
+        subtitle: 'ส่ง Exam Card และพาสัตว์ไปยัง Tx Room เพื่อจัดยาฉีด ฉีดยา และทำหัตถการ',
+        actor: 'DVM / Staff / Owner',
+        actorType: 'dvm',
+        target: 'Tx Room (ห้องหัตถการ)',
+        module: 'TX ROOM / PROCEDURES',
+        output: 'Order slip',
+        action: 'ส่งคำสั่งหัตถการเข้า Tx Room เจ้าหน้าที่และสัตวแพทย์จัดยาฉีด ฉีดยา และทำแผล/หัตถการ',
+        refCode: 'TX-PROC-108',
+        time: '0.084s',
+        fromNode: 'examGeneral',
+        toNode: 'txRoom',
+        laneId: 'owner:examGeneral>txRoom',
+        activeLanes: ['owner:examGeneral>txRoom', 'card:examGeneral>txRoom'],
+        badgeColor: 'dvm',
+        petOwner: {
+          fromNode: 'examGeneral',
+          toNode: 'txRoom',
+          statusLabel: 'พาสัตว์เข้ารับการฉีดยาและทำหัตถการที่ Tx Room'
+        },
+        packets: [
+          {
+            id: 'pkt-step6-owner',
+            stream: 'owner',
+            tone: 'owner',
+            laneId: 'owner:examGeneral>txRoom',
+            fromNode: 'examGeneral',
+            toNode: 'txRoom',
+            tag: 'PET & OWNER',
+            title: 'Move to Tx Room',
+            fields: [
+              { k: 'STEP', v: 'Injection / Tx' },
+              { k: 'STATION', v: 'Tx Room' }
+            ]
+          },
+          {
+            id: 'pkt-step6-card',
+            stream: 'exam-card',
+            tone: 'dvm',
+            laneId: 'card:examGeneral>txRoom',
+            fromNode: 'examGeneral',
+            toNode: 'txRoom',
+            tag: 'EXAM CARD & TX',
+            title: 'Injectable & Procedure Order',
+            fields: [
+              { k: 'INJECT', v: 'SC / IV Meds' },
+              { k: 'PROC', v: 'Fluid & Wound Care' }
+            ],
+            stopOffsetX: 0,
+            stopOffsetY: 78
+          }
+        ],
+        stationNotes: [
+          {
+            id: 'note-step6-staff',
+            nodeId: 'txRoom',
+            tone: 'staff',
+            roleLabel: 'STAFF',
+            title: 'Prep Tx Meds',
+            detail: 'จัดเตรียมยาฉีด / อุปกรณ์',
+            offsetX: -90,
+            offsetY: -68
+          },
+          {
+            id: 'note-step6-dvm',
+            nodeId: 'txRoom',
+            tone: 'dvm',
+            roleLabel: 'DVM',
+            title: 'Injection / Tx',
+            detail: 'ฉีดยาและทำหัตถการ',
+            offsetX: 90,
+            offsetY: -68
+          }
+        ],
+        characterImage: '/images/blueprint/examination-1.png',
+        characterTitle: 'การจัดยาฉีด ฉีดยา และทำหัตถการภายใน Tx Room',
+        uiPromptLabel: 'ดูหน้าจอสั่งหัตถการและยา (Quick Order Tx UI)',
+        uiWireframes: [
+          {
+            id: 'order-tx-step6',
+            title: 'Quick Order Tx & Procedure Cart',
+            image: '/images/blueprint/order.jpg',
+            tag: 'ORDER TX UI',
+            badgeLabel: 'Tx Room Execution'
+          }
+        ],
+        explanation: {
+          title: 'การส่งต่อจากห้องตรวจเข้าสู่ Tx Room (จัดยาฉีดและทำหัตถการ)',
+          role: 'สัตวแพทย์ (DVM) และเจ้าหน้าที่ห้องหัตถการ (Tx Room Staff)',
+          location: 'Exam Room (General) -> Tx Room',
+          systemUsed: 'KAHIS Quick Order Tx & Treatment Execution Log',
+          clinicalNote:
+            'หลังจากตรวจเสร็จ ทั้ง Pet & Owner และใบสั่งใน Exam Card จะเคลื่อนที่มายัง Tx Room ซึ่งเป็นหน่วยสนับสนุนสำหรับจัดเตรียมยาฉีด ฉีดยา ให้สารน้ำ และทำหัตถการให้เรียบร้อยก่อนกลับบ้าน',
+          keyPoints: [
+            'แยกงานจัดยาฉีดและทำหัตถการไว้ที่ Tx Room อย่างชัดเจน',
+            'บันทึกเวลาผู้ฉีดยาและตัดสต็อกเวชภัณฑ์ในห้อง Tx อัตโนมัติ',
+            'เมื่อทำหัตถการเสร็จ ข้อมูลใบสั่งยากลับบ้านจะส่งต่อไปยัง Rx Room'
+          ]
+        }
+      },
+      {
+        id: 7,
+        title: '7. Tx Room > Rx Room (จัดยานำกลับ) & ส่งยอดไป Cashier',
+        titleEn: 'Rx Room Medication Preparation & Billing Transfer',
+        subtitle: 'Exam Card วิ่งเข้า Rx Room เพื่อจัดยานำกลับ ขณะที่ Pet & Owner เดินไปที่ Cashier',
+        actor: 'Staff (Rx Room) & Pet Owner',
         actorType: 'staff',
-        target: 'ห้องยานำกลับ (Pharmacy)',
-        module: 'PHARMACY DISPENSARY',
-        action: 'ดึงรายการใบสั่งยาจากระบบ ตรวจสอบความถูกต้อง และจัดเตรียมยาพร้อมฉลาก',
-        refCode: 'RX-DISP-4350',
-        time: '0.105s',
-        fromNode: 'examRoom',
-        toNode: 'pharmacyCashier',
-        laneId: 'examRoom>pharmacyCashier',
-        badgeColor: 'amber',
+        target: 'Rx Room & Cashier',
+        module: 'RX PREP / BILLING SYNC',
+        output: 'Order slip',
+        action: 'ใบสั่งยาวิ่งเข้า Rx Room เพื่อจัดยานำกลับ ส่วน Pet & Owner เดินจาก Tx Room ไปรอชำระเงินที่ Cashier',
+        refCode: 'RX-PREP-4350',
+        time: '0.098s',
+        fromNode: 'txRoom',
+        toNode: 'rxRoom',
+        laneId: 'card:txRoom>rxRoom',
+        activeLanes: ['card:txRoom>rxRoom', 'owner:txRoom>cashier'],
+        badgeColor: 'staff',
+        petOwner: {
+          fromNode: 'txRoom',
+          toNode: 'cashier',
+          statusLabel: 'เดินจาก Tx Room ไปติดต่อชำระเงินที่ Cashier'
+        },
+        packets: [
+          {
+            id: 'pkt-step7-card',
+            stream: 'exam-card',
+            tone: 'staff',
+            laneId: 'card:txRoom>rxRoom',
+            fromNode: 'txRoom',
+            toNode: 'rxRoom',
+            tag: 'EXAM CARD (RX)',
+            title: 'Take-Home Meds Order',
+            fields: [
+              { k: 'UNIT', v: 'Rx Room (จัดยา)' },
+              { k: 'ITEMS', v: '4 Prescriptions' }
+            ],
+            stopOffsetX: 95,
+            stopOffsetY: -64
+          },
+          {
+            id: 'pkt-step7-owner',
+            stream: 'owner',
+            tone: 'owner',
+            laneId: 'owner:txRoom>cashier',
+            fromNode: 'txRoom',
+            toNode: 'cashier',
+            tag: 'PET & OWNER',
+            title: 'Proceed to Cashier',
+            fields: [
+              { k: 'FROM', v: 'Tx Room' },
+              { k: 'TO', v: 'Cashier' }
+            ]
+          }
+        ],
+        stationNotes: [
+          {
+            id: 'note-step7-rx',
+            nodeId: 'rxRoom',
+            tone: 'staff',
+            roleLabel: 'STAFF (RX)',
+            title: 'Prep Rx Meds',
+            detail: 'จัดยากลับบ้าน + พิมพ์ฉลาก',
+            offsetX: -82,
+            offsetY: -64
+          },
+          {
+            id: 'note-step7-cashier',
+            nodeId: 'cashier',
+            tone: 'system',
+            roleLabel: 'SYSTEM',
+            title: 'Billing Sync',
+            detail: 'Sent charge to Cashier',
+            offsetX: 0,
+            offsetY: -68
+          }
+        ],
         characterImage: '/images/blueprint/pharmacy.png',
-        characterTitle: 'เจ้าหน้าที่ห้องยากำลังตรวจสอบและจัดยา',
+        characterTitle: 'เจ้าหน้าที่ Rx Room จัดเตรียมยานำกลับและพิมพ์ฉลากยา',
+        uiPromptLabel: 'ดูหน้าจอรายการสั่งยา (Medication Order UI)',
         uiWireframes: [
           {
             id: 'order-dispense',
             title: 'Prescribed Order & Medication Cart',
             image: '/images/blueprint/order.jpg',
-            tag: 'ORDER TX UI',
-            badgeLabel: 'Dispensing Queue'
+            tag: 'RX ORDER UI',
+            badgeLabel: 'Rx Preparation Queue'
           }
         ],
         explanation: {
-          title: 'การประมวลผลคำสั่งยาและการจัดเตรียมเวชภัณฑ์',
-          role: 'เภสัชกรและเจ้าหน้าที่ห้องยา (Pharmacist & Dispensary Technician)',
-          location: 'ห้องยาและเวชภัณฑ์ผู้ป่วยนอก (Outpatient Pharmacy)',
-          systemUsed: 'ระบบบริหารงานห้องยา KAHIS Rx Center',
+          title: 'การทำงานคู่ขนาน: Rx Room จัดยานำกลับ ขณะที่ Pet & Owner เดินไป Cashier',
+          role: 'เจ้าหน้าที่จัดยา (Rx Room Staff) และ Pet & Owner',
+          location: 'Tx Room -> Rx Room (สำหรับใบสั่งยา) และ Tx Room -> Cashier (สำหรับเจ้าของสัตว์)',
+          systemUsed: 'KAHIS Rx Preparation Worklist & Billing Aggregator',
           clinicalNote:
-            'คำสั่งยาที่สัตวแพทย์ส่งจาก Quick Order Tx จะปรากฏใน Worklist ของห้องยาทันที เจ้าหน้าที่ตรวจสอบขนาดการใช้ยา (Dose, Route, Frequency) จัดยาใส่ซอง และพิมพ์ฉลากคำแนะนำการใช้ยา',
+            'จุดเด่นของผัง Multi-Lane: เมื่อเสร็จจาก Tx Room ตัวเจ้าของและสัตว์เลี้ยง (Pet & Owner) จะเดินลงไปยัง Cashier เพื่อชำระเงิน ในขณะที่ข้อมูล Exam Card และใบสั่งยาจะวิ่งขึ้นไปยัง Rx Room เพื่อจัดยานำกลับและส่งไปเตรียมรอส่งมอบที่ Pharmacy เป็นการลดเวลารอคอย',
           keyPoints: [
-            'คำสั่งยาเชื่อมต่อแบบ Real-time จากห้องตรวจสู่ห้องยา',
-            'ระบบตรวจสอบ Double-check ขนาดยาและประวัติการแพ้ยา',
-            'เตรียมยาพร้อมส่งมอบเมื่อเจ้าของชำระค่าบริการเรียบร้อย'
+            'แยกหน่วย Rx Room (ห้องจัดยา/พิมพ์ฉลาก) ออกจาก Pharmacy (ช่องจ่ายยาและอธิบายวิธีใช้)',
+            'ตรวจสอบความถูกต้องของขนาดยา (Double-check Dose & Frequency)',
+            'รวมค่าใช้จ่ายทุกแผนกส่งเข้าหน้าจอ Cashier อัตโนมัติ'
+          ]
+        }
+      },
+      {
+        id: 8,
+        title: '8. Cashier: เก็บเงิน & System สั่ง Discharge Case (Visit No. -> Inactive)',
+        titleEn: 'Cashier Payment & Automated System Case Discharge',
+        subtitle: 'หลังเก็บเงินเสร็จ ระบบ KAHIS ทำการ Discharge Case เปลี่ยน Visit No. เป็น Inactive ทันที',
+        actor: 'Staff (Cashier) / System',
+        actorType: 'system',
+        target: 'Cashier (การเงิน)',
+        module: 'CASHIER / AUTO DISCHARGE',
+        output: 'ใบเสร็จ',
+        action: 'ชำระเงินออกใบเสร็จ -> ระบบ Discharge Case เปลี่ยน Visit No. เป็น Inactive และปลดล็อกคิวจ่ายยา',
+        refCode: 'VN-INACTIVE-OK',
+        time: '0.112s',
+        fromNode: 'rxRoom',
+        toNode: 'cashier',
+        laneId: 'card:rxRoom>cashier',
+        activeLanes: [
+          'card:rxRoom>cashier',
+          'system:cashier>pharmacy'
+        ],
+        badgeColor: 'system',
+        petOwner: {
+          fromNode: 'cashier',
+          toNode: 'cashier',
+          statusLabel: 'กำลังชำระเงินและรับใบเสร็จที่ Cashier'
+        },
+        packets: [
+          {
+            id: 'pkt-step8-sys-pharm',
+            stream: 'system',
+            tone: 'system',
+            laneId: 'system:cashier>pharmacy',
+            fromNode: 'cashier',
+            toNode: 'pharmacy',
+            tag: 'SYSTEM SIGNAL',
+            title: 'Payment OK -> Release Meds',
+            fields: [
+              { k: 'RECEIPT', v: 'PAID' },
+              { k: 'ACTION', v: 'Unlock Pharmacy' }
+            ],
+            stopOffsetX: 0,
+            stopOffsetY: -68
+          },
+          {
+            id: 'pkt-step8-sys-discharge',
+            stream: 'exam-card',
+            tone: 'staff',
+            laneId: 'card:rxRoom>cashier',
+            fromNode: 'rxRoom',
+            toNode: 'cashier',
+            tag: 'BILLING SUMMARY',
+            title: 'Invoice -> Cashier',
+            fields: [
+              { k: 'CASE', v: 'Ready to Pay' },
+              { k: 'VISIT NO', v: '-> INACTIVE' }
+            ],
+            stopOffsetX: -125,
+            stopOffsetY: -135
+          }
+        ],
+        stationNotes: [
+          {
+            id: 'note-step8-staff',
+            nodeId: 'cashier',
+            tone: 'staff',
+            roleLabel: 'STAFF',
+            title: 'Payment',
+            detail: 'รับชำระเงิน + ออกใบเสร็จ',
+            offsetX: -90,
+            offsetY: -68
+          },
+          {
+            id: 'note-step8-sys',
+            nodeId: 'cashier',
+            tone: 'system',
+            roleLabel: 'SYSTEM',
+            title: 'Auto Discharge',
+            detail: 'Visit No -> INACTIVE',
+            offsetX: 90,
+            offsetY: -68
+          }
+        ],
+        characterImage: '/images/blueprint/cashier.png',
+        characterTitle: 'เจ้าหน้าที่การเงินรับชำระเงิน และระบบสั่ง Discharge Case (Visit No. -> Inactive)',
+        uiPromptLabel: 'ดูภาพฉากการชำระเงินและปิดเคส (Cashier Scene)',
+        uiWireframes: [],
+        explanation: {
+          title: 'การชำระเงินและการทำงานอัตโนมัติของระบบ (Auto Discharge & Visit No. Inactive)',
+          role: 'เจ้าหน้าที่การเงิน (Cashier Staff) & ระบบ KAHIS (System)',
+          location: 'Cashier -> Pharmacy & Central Visit Registry',
+          systemUsed: 'KAHIS Cashier Billing & Visit Lifecycle Controller',
+          clinicalNote:
+            'เมื่อเจ้าหน้าที่การเงินบันทึกการรับชำระเงินเรียบร้อย ระบบ KAHIS (จุดสีเขียว System) จะทำงานอัตโนมัติ 2 ส่วนพร้อมกัน: (1) ทำการ Discharge Case ของผู้ป่วยนอกและเปลี่ยนสถานะหมายเลข Visit No. จาก Active เป็น Inactive และ (2) ส่งสัญญาณปลดล็อกใบยาไปยังห้อง Pharmacy',
+          keyPoints: [
+            'รับชำระค่ารักษาและพิมพ์ใบเสร็จรับเงินอย่างเป็นทางการ',
+            'System เปลี่ยนสถานะ Visit No. เป็น INACTIVE (ปิดวงจร Visit ของรอบการรักษานี้)',
+            'ส่งสัญญาณแจ้งห้อง Pharmacy ให้ส่งมอบยากลับบ้านได้ทันที'
           ]
         }
       },
       {
         id: 9,
-        title: '9. เจ้าของสัตว์ไปชำระค่าใช้จ่ายและรับยา',
-        titleEn: 'Payment, Receipt & Medication Pickup',
-        subtitle: 'ชำระค่ารักษา พิมพ์ใบเสร็จ และรับมอบยานำกลับบ้าน',
-        actor: 'เจ้าหน้าที่การเงิน & เจ้าของสัตว์ (Cashier & Owner)',
+        title: '9. Cashier > Pharmacy (รับยา) > Exit (เดินทางกลับ)',
+        titleEn: 'Pharmacy Medication Handover & Hospital Exit',
+        subtitle: 'Pet & Owner เดินไปรับยาที่ Pharmacy พร้อมฟังคำแนะนำการใช้ยาก่อนออกทาง Exit',
+        actor: 'Pet & Owner / Pharmacist',
         actorType: 'owner',
-        target: 'เคาน์เตอร์การเงินและจ่ายยา (Cashier & Exit)',
-        module: 'CASHIER / RECEIPT PRINT',
-        action: 'ชำระเงิน รับใบเสร็จรับเงิน และรับยาพร้อมคำแนะนำการป้อนยา',
-        refCode: 'PAID-RECEIPT-OK',
-        time: '0.120s',
-        fromNode: 'pharmacyCashier',
-        toNode: 'entrance',
-        laneId: 'waitingHall>pharmacyCashier',
-        badgeColor: 'green',
-        characterImage: '/images/blueprint/cashier.png',
-        characterTitle: 'เจ้าหน้าที่การเงินพิมพ์ใบเสร็จและส่งมอบเอกสาร',
-        uiWireframes: [],
+        target: 'Pharmacy > Exit',
+        module: 'PHARMACY DISPENSE / EXIT',
+        output: 'จ่ายยา',
+        action: 'เจ้าของสัตว์รับยากลับบ้านที่ Pharmacy เภสัชกรอธิบายวิธีใช้ยา และเดินออกทาง Exit',
+        refCode: 'EXIT-COMPLETE',
+        time: '0.125s',
+        fromNode: 'pharmacy',
+        toNode: 'exit',
+        laneId: 'owner:pharmacy>exit',
+        activeLanes: ['owner:cashier>pharmacy', 'card:rxRoom>pharmacy', 'owner:pharmacy>exit'],
+        badgeColor: 'owner',
+        petOwner: {
+          fromNode: 'pharmacy',
+          toNode: 'exit',
+          statusLabel: 'รับยากลับบ้านที่ Pharmacy และเดินทางออกทาง Exit'
+        },
+        packets: [
+          {
+            id: 'pkt-step9-owner',
+            stream: 'owner',
+            tone: 'owner',
+            laneId: 'owner:pharmacy>exit',
+            fromNode: 'pharmacy',
+            toNode: 'exit',
+            tag: 'PET & OWNER',
+            title: 'Meds Received -> Exit',
+            fields: [
+              { k: 'PHARMACY', v: 'Counseling Done' },
+              { k: 'VISIT', v: 'Completed' }
+            ]
+          }
+        ],
+        stationNotes: [
+          {
+            id: 'note-step9-pharm',
+            nodeId: 'pharmacy',
+            tone: 'staff',
+            roleLabel: 'STAFF (PHARM)',
+            title: 'Dispense Meds',
+            detail: 'ส่งมอบยา + แนะนำวิธีใช้',
+            offsetX: 0,
+            offsetY: -68
+          },
+          {
+            id: 'note-step9-exit',
+            nodeId: 'exit',
+            tone: 'owner',
+            roleLabel: 'PET & OWNER',
+            title: 'Completed',
+            detail: 'รับยากลับบ้าน (Exit)',
+            offsetX: -120,
+            offsetY: -45
+          }
+        ],
+        characterImage: '/images/blueprint/pharmacy.png',
+        characterTitle: 'เภสัชกรส่งมอบยาที่ห้อง Pharmacy ก่อนที่เจ้าของและสัตว์เลี้ยงจะเดินทางออกทาง Exit',
+        uiPromptLabel: 'ดูหน้าจอสรุปรายการสั่งยาและฉากส่งมอบยา (Pharmacy UI & Scene)',
+        uiWireframes: [
+          {
+            id: 'order-final-dispense',
+            title: 'Dispensed Medication Summary',
+            image: '/images/blueprint/order.jpg',
+            tag: 'DISPENSED UI',
+            badgeLabel: 'Completed Handover'
+          }
+        ],
         explanation: {
-          title: 'การชำระเงิน การส่งมอบยา และเสร็จสิ้นกระบวนการรักษา',
-          role: 'เจ้าหน้าที่การเงิน (Cashier), เภสัชกร และเจ้าของสัตว์',
-          location: 'เคาน์เตอร์การเงินและช่องจ่ายยา (Finance Counter)',
-          systemUsed: 'ระบบการเงิน KAHIS Cashier & Receipt Generator',
+          title: 'การรับยากลับบ้านที่ Pharmacy และเดินทางออกทาง Exit',
+          role: 'เภสัชกร/เจ้าหน้าที่จ่ายยา (Pharmacy Staff) และ Pet & Owner',
+          location: 'Cashier -> Pharmacy -> Exit',
+          systemUsed: 'KAHIS Pharmacy Handover & Follow-up Appointment',
           clinicalNote:
-            'เจ้าของสัตว์ชำระค่ารักษาพยาบาล เจ้าหน้าที่พิมพ์ใบเสร็จรับเงินอย่างเป็นทางการ จากนั้นเจ้าของยื่นใบเสร็จที่ช่องจ่ายยาเพื่อรับยานำกลับบ้านพร้อมคำแนะนำการป้อนยาจากเภสัชกร เป็นอันเสร็จสิ้นกระบวนการ OPD',
+            'หลังจากชำระเงินและระบบ Discharge Case แล้ว เจ้าของจะพาสัตว์เลี้ยงจาก Cashier มารับยาที่เตรียมไว้แล้วจาก Rx Room ณ ช่องจ่ายยา Pharmacy เภสัชกรตรวจสอบความถูกต้อง แนะนำวิธีการให้ยา และเจ้าของพาสัตว์เลี้ยงเดินออกทาง Exit เป็นอันจบกระบวนการ',
           keyPoints: [
-            'ออกใบเสร็จรับเงินค่ารักษาพยาบาล (Official Receipt)',
-            'ส่งมอบยาและอธิบายวิธีการให้ยา/ข้อควรระวังแก่เจ้าของสัตว์',
-            'บันทึกสถานะเคสเป็น "Completed" เสร็จสิ้นการให้บริการ'
+            'ตระกร้ายาที่จัดจาก Rx Room ถูกส่งมารอพร้อมจ่ายที่ Pharmacy',
+            'เภสัชกรตรวจสอบใบเสร็จ ยืนยันตัวตนสัตว์ และอธิบายวิธีใช้ยา',
+            'Pet & Owner เดินทางออกทาง Exit (สถานะ Visit No. เป็น Inactive สมบูรณ์)'
           ]
         }
       }
     ]
   },
   {
-    id: 'examcard-deepdive',
-    title: 'EXAM CARD 65:35 DEEP DIVE',
-    titleEn: 'Clinical Documentation Architecture',
-    subtitle: 'เจาะลึกการใช้งานแบบฟอร์มตรวจร่างกาย 26 หัวข้อ (Coming Soon)',
-    group: 'exam-card',
+    id: 'er-service-journey',
+    title: 'ER Patient Service Journey',
+    titleEn: 'Emergency & Critical Care Workflow',
+    subtitle: 'กระบวนการรับสัตว์ป่วยฉุกเฉินและวิกฤต (เตรียมเพิ่ม Flow ในระยะถัดไป)',
+    group: 'clinical',
     status: 'coming-soon',
-    totalSteps: 6,
-    overviewDesc: 'คู่มือเจาะลึกเฉพาะโมดูล Exam Card ดีไซน์ใหม่ 65:35, แผง Objective 4 คอลัมน์อิสระ และการพิมพ์ Standalone Snapshot',
+    totalSteps: 0,
+    overviewDesc:
+      'โครงสร้างรองรับเวิร์กโฟลว์แผนกฉุกเฉินและวิกฤต (ER) แสดงการคัดกรองด่วนพิเศษ (Fast-Track Triage), สัญญาณแจ้งเตือน Alarm และการส่งต่อห้องผ่าตัด (Surgery) หรือ ICU โดยยังไม่ได้กำหนดลำดับขั้นตอนในขณะนี้',
     facts: [
-      { label: 'MODULE', value: 'Exam Card Manager 65:35' },
-      { label: 'TOPICS', value: '26 Systematic Exam Topics' },
-      { label: 'STATUS', value: 'Preparing in Next Phase' }
+      { label: 'DEPARTMENT', value: 'ER (Emergency & Critical Care)' },
+      { label: 'TOTAL STEPS', value: '0 Steps (Empty Placeholder)' },
+      { label: 'STATUS', value: 'Ready for Flow Definition' }
     ],
     steps: []
   }

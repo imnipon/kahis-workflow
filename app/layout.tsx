@@ -2,11 +2,15 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "KAHIS Clinical Workflow Explorer | Veterinary Clinical & EMR Process",
+  title: "KAHIS Clinical Workflow Explorer v1.0 | Veterinary Clinical & EMR Process",
   description:
     "Interactive animated 3D blueprint workflow explorer for KAHIS Exam Card and Veterinary Outpatient Care Process",
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/images/logo_icon/logo_favicon.png", type: "image/png" },
+      { url: "/favicon.ico" }
+    ],
+    apple: "/images/logo_icon/logo_favicon.png",
   },
 };
 
