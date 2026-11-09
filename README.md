@@ -97,7 +97,7 @@
 | **02** | ติดต่อลงทะเบียน | Registration & HN Search | `REGISTRATION` | จนท. เวชระเบียน | `search.jpg` (Search UI) |
 | **03** | บันทึก Check-in | Check-in & Queue Issuance | `REGISTRATION` | จนท. เวชระเบียน | `checkin.jpg` (Check-in UI) |
 | **04** | รอตรวจที่จุดรอตรวจ | Waiting Area & Triage | `WAITING HALL` | เจ้าของสัตว์ | ฉากโซนรอเรียกคิว |
-| **05** | เรียกเข้าห้องตรวจ | Consultation & History | `EXAM ROOM 10` | สัตวแพทย์ | `examcard.jpg` (Exam Card 65:35) |
+| **05** | เรียกเข้าห้องตรวจ | Consultation & History | `EXAM ROOM 10` | สัตวแพทย์ | `examcard.jpg` (Exam Card) |
 | **06** | ตรวจร่างกายและระบบ | Physical Exam & VPE | `EXAM ROOM 10` | สัตวแพทย์ | `vpe.jpg`, `vpe-table.jpg` |
 | **07** | บันทึก EMR & สั่งยา | SOAP & Medication Order | `EXAM ROOM 10` | สัตวแพทย์ | `assessment.jpg`, `plan.jpg`, `order.jpg` |
 | **08** | เภสัชกรรมจัดยา | Rx Preparation & Dispensing | `PHARMACY` | เภสัชกร | `order.jpg` (Rx Dispensing Queue) |

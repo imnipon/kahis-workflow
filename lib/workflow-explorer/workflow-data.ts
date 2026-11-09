@@ -20,7 +20,7 @@ export interface AnimatedPacketSpec {
   tag: string;
   title: string;
   lines?: string[];
-  fields: Array<{ k: string; v: string }>;
+  fields?: Array<{ k: string; v: string }>;
   stopOffsetX?: number;
   stopOffsetY?: number;
 }
@@ -238,6 +238,16 @@ export const STATIONS: Record<string, StationNode> = {
     x: 905,
     y: 485
   },
+  waitingRxCashier: {
+    id: 'waitingRxCashier',
+    label: 'WAITING (RX & CASHIER)',
+    labelTh: 'โถงพักคอยการเงินและยา',
+    code: '',
+    category: 'main',
+    categoryLabel: 'WAITING ZONE',
+    x: 735,
+    y: 310
+  },
   pharmacy: {
     id: 'pharmacy',
     label: 'PHARMACY',
@@ -287,6 +297,20 @@ export const STATION_LANES: StationLane[] = [
     d: 'M 419 310 L 480 310'
   },
   {
+    id: 'owner:examGeneral>xrayUsg',
+    from: 'examGeneral',
+    to: 'xrayUsg',
+    stream: 'owner',
+    d: 'M 555 342 L 555 452'
+  },
+  {
+    id: 'owner:xrayUsg>examGeneral',
+    from: 'xrayUsg',
+    to: 'examGeneral',
+    stream: 'owner',
+    d: 'M 555 452 L 555 342'
+  },
+  {
     id: 'owner:examGeneral>txRoom',
     from: 'examGeneral',
     to: 'txRoom',
@@ -294,11 +318,25 @@ export const STATION_LANES: StationLane[] = [
     d: 'M 642 338 L 686 458'
   },
   {
-    id: 'owner:txRoom>cashier',
+    id: 'owner:txRoom>examGeneral',
     from: 'txRoom',
+    to: 'examGeneral',
+    stream: 'owner',
+    d: 'M 686 458 L 642 338'
+  },
+  {
+    id: 'owner:examGeneral>waitingRxCashier',
+    from: 'examGeneral',
+    to: 'waitingRxCashier',
+    stream: 'owner',
+    d: 'M 642 310 L 681 310'
+  },
+  {
+    id: 'owner:waitingRxCashier>cashier',
+    from: 'waitingRxCashier',
     to: 'cashier',
     stream: 'owner',
-    d: 'M 789 485 L 851 485'
+    d: 'M 762 338 L 860 460'
   },
   {
     id: 'owner:cashier>pharmacy',
@@ -306,6 +344,20 @@ export const STATION_LANES: StationLane[] = [
     to: 'pharmacy',
     stream: 'owner',
     d: 'M 915 452 L 915 374'
+  },
+  {
+    id: 'owner:pharmacy>waitingRxCashier',
+    from: 'pharmacy',
+    to: 'waitingRxCashier',
+    stream: 'owner',
+    d: 'M 851 310 L 789 310'
+  },
+  {
+    id: 'owner:waitingRxCashier>pharmacy',
+    from: 'waitingRxCashier',
+    to: 'pharmacy',
+    stream: 'owner',
+    d: 'M 789 310 L 851 310'
   },
   {
     id: 'owner:pharmacy>exit',
@@ -405,6 +457,27 @@ export const STATION_LANES: StationLane[] = [
     d: 'M 480 322 L 420 322'
   },
   {
+    id: 'system:examGeneral>rxRoom',
+    from: 'examGeneral',
+    to: 'rxRoom',
+    stream: 'system',
+    d: 'M 630 290 Q 740 210 858 180'
+  },
+  {
+    id: 'system:xrayUsg>examGeneral',
+    from: 'xrayUsg',
+    to: 'examGeneral',
+    stream: 'system',
+    d: 'M 572 452 L 572 342'
+  },
+  {
+    id: 'system:txRoom>examGeneral',
+    from: 'txRoom',
+    to: 'examGeneral',
+    stream: 'system',
+    d: 'M 700 458 L 656 338'
+  },
+  {
     id: 'system:cashier>pharmacy',
     from: 'cashier',
     to: 'pharmacy',
@@ -432,17 +505,25 @@ export const LANE_MIN_STEP: Record<string, number> = {
   'sideflow:waitingHall>examEr': 3,
   'sideflow:waitingHall>examSp': 3,
   'sideflow:examGeneral>surgery': 4,
+  'owner:examGeneral>xrayUsg': 5,
+  'owner:xrayUsg>examGeneral': 5,
+  'system:xrayUsg>examGeneral': 5,
   'sideflow:examGeneral>xrayUsg': 5,
   'sideflow:xrayUsg>examGeneral': 5,
   'owner:examGeneral>txRoom': 6,
+  'owner:txRoom>examGeneral': 6,
+  'system:txRoom>examGeneral': 6,
   'card:examGeneral>txRoom': 6,
-  'card:txRoom>rxRoom': 7,
-  'owner:txRoom>cashier': 7,
+  'owner:examGeneral>waitingRxCashier': 7,
+  'system:examGeneral>rxRoom': 7,
   'card:rxRoom>cashier': 8,
+  'owner:waitingRxCashier>cashier': 8,
+  'owner:cashier>pharmacy': 8,
+  'owner:pharmacy>waitingRxCashier': 8,
   'system:cashier>pharmacy': 8,
   'system:cashier>registration': 8,
+  'owner:waitingRxCashier>pharmacy': 9,
   'card:rxRoom>pharmacy': 9,
-  'owner:cashier>pharmacy': 9,
   'owner:pharmacy>exit': 9
 };
 
@@ -475,10 +556,10 @@ export const WORKFLOWS: WorkflowItem[] = [
         subtitle: 'สัตว์ป่วยเข้าจุดลงทะเบียน คัดกรองทั่วไป/ฉุกเฉิน',
         actor: 'Pet & Owner / Staff',
         actorType: 'owner',
-        target: 'Registration (เวชระเบียน)',
+        target: 'entrance > registration',
         module: 'ENTRANCE / TRIAGE',
         output: 'data',
-        action: 'เจ้าของพาสัตว์เลี้ยงจาก Entrance เข้าติดต่อจุด Registration (คัดกรองเบื้องต้น)',
+        action: 'เจ้าของสัตว์ติดต่อจุดลงทะเบียน คัดกรอง หรือ ติดต่อ ER',
         refCode: 'ARRIV-GATE01',
         time: '0.000s',
         fromNode: 'entrance',
@@ -562,10 +643,10 @@ export const WORKFLOWS: WorkflowItem[] = [
         subtitle: 'เปิด Visit No. ส่งคิวเข้าแผนก เคสรอที่โถงคอย',
         actor: 'Staff / System',
         actorType: 'staff',
-        target: 'Waiting Hall & Exam Room',
-        module: 'CHECK-IN / VISIT ACTIVE',
+        target: 'registration > waiting',
+        module: 'CHECK-IN / Q-LIST',
         output: 'Q slip',
-        action: 'ออก Visit No. (Active) ส่ง Exam Card เข้าห้องตรวจ ส่วน Pet & Owner ไปรอที่ Waiting Hall',
+        action: 'visit no. / Q no. / add Q list / case รอที่จุดรอเรียก',
         refCode: 'VN-690315-ACT',
         time: '0.018s',
         fromNode: 'registration',
@@ -673,7 +754,7 @@ export const WORKFLOWS: WorkflowItem[] = [
         subtitle: 'หมอกดเรียกคิว จอและเสียงประกาศ เคสเข้าห้องตรวจ',
         actor: 'DVM / System / Owner',
         actorType: 'system',
-        target: 'Exam Room (General - Zone A #1)',
+        target: 'waiting > exam room',
         module: 'QUEUE CALL / DISPLAY & AUDIO',
         output: 'data',
         action: 'สัตวแพทย์กด Call Queue -> ระบบเปลี่ยนหน้าจอ TV + ส่งเสียงเรียก -> Pet & Owner เข้าห้องตรวจ Zone A #1',
@@ -773,14 +854,14 @@ export const WORKFLOWS: WorkflowItem[] = [
       {
         id: 4,
         title: '4. ตรวจรักษา (Examination)',
-        titleEn: 'Clinical Examination & Exam Card 65:35 Documentation',
+        titleEn: 'Clinical Examination & Exam Card Documentation',
         subtitle: 'หมอตรวจร่างกาย วัดสัญญาณชีพ และบันทึก Exam Card',
         actor: 'DVM (สัตวแพทย์)',
         actorType: 'dvm',
-        target: 'Exam Room (Zone A #1)',
-        module: 'EXAM CARD 65:35 / VPE',
+        target: 'exam room',
+        module: 'EXAM CARD / SOAP',
         output: 'data',
-        action: 'ตรวจร่างกายวัดสัญญาณชีพ บันทึกผลลง Exam Card และสั่งตรวจเพิ่มเติม',
+        action: "SOAP ดูประวัติและ Pet's Note, บันทึก Exam Card, VPE, Assessment",
         refCode: 'EC-6535-A1',
         time: '0.052s',
         fromNode: 'examGeneral',
@@ -801,32 +882,22 @@ export const WORKFLOWS: WorkflowItem[] = [
             nodeId: 'examGeneral',
             tone: 'dvm',
             roleLabel: 'DVM',
-            title: 'Exam Card',
-            detail: 'บันทึก VPE & Diagnosis',
+            title: 'การบันทึกการตรวจ',
+            detail: 'บันทึก VPE & Assessment',
             offsetX: -92,
-            offsetY: -58
-          },
-          {
-            id: 'note-step4-alarm',
-            nodeId: 'examGeneral',
-            tone: 'alarm',
-            roleLabel: 'ALARM',
-            title: 'Clinical Alert',
-            detail: 'เตือนแพ้ยา / Vital ผิดปกติ',
-            offsetX: 92,
             offsetY: -58
           }
         ],
         characterImage: '/images/blueprint/dvm-comp.png',
-        characterTitle: 'สัตวแพทย์ตรวจร่างกายและบันทึก Exam Card 65:35 ในห้องตรวจ Zone A #1',
-        uiPromptLabel: 'ดูหน้าจอ Exam Card 65:35 & Assessment (6 หน้าจอ)',
+        characterTitle: 'สัตวแพทย์ตรวจร่างกายและบันทึก Exam Card ในห้องตรวจ Zone A #1',
+        uiPromptLabel: 'ดูหน้าจอ Exam Card & Assessment (6 หน้าจอ)',
         uiWireframes: [
           {
             id: 'examcard-editor',
             title: 'Subjective & Systematic Exam Card Editor',
             image: '/images/blueprint/examcard.jpg',
-            tag: 'EXAM CARD 65:35',
-            badgeLabel: 'Core 65:35 Form'
+            tag: 'EXAM CARD',
+            badgeLabel: 'Core Form'
           },
           {
             id: 'vpe-form',
@@ -868,9 +939,9 @@ export const WORKFLOWS: WorkflowItem[] = [
           title: 'การตรวจร่างกายและบันทึก Exam Card ภายในห้องตรวจ (Zone A ห้อง 1)',
           role: 'สัตวแพทย์ประจำห้องตรวจ (DVM)',
           location: 'Exam Room (General - Zone A ห้อง 1)',
-          systemUsed: 'KAHIS Exam Card 65:35, VPE & SNOMED CT Assessment',
+          systemUsed: 'KAHIS Exam Card, VPE & SNOMED CT Assessment',
           clinicalNote:
-            'ขณะที่ Pet & Owner อยู่ภายในห้องตรวจ Zone A ห้อง 1 สัตวแพทย์จะทำการตรวจร่างกาย วัดสัญญาณชีพ และบันทึกข้อมูลลงใน Exam Card ดีไซน์ 65:35 พร้อมระบบแจ้งเตือน Alarm หากมีประวัติแพ้ยาหรือค่า Vital Signs เกินเกณฑ์',
+            'ขณะที่ Pet & Owner อยู่ภายในห้องตรวจ Zone A ห้อง 1 สัตวแพทย์จะทำการตรวจร่างกาย วัดสัญญาณชีพ และบันทึกข้อมูลลงใน Exam Card พร้อมระบบแจ้งเตือน Alarm หากมีประวัติแพ้ยาหรือค่า Vital Signs เกินเกณฑ์',
           keyPoints: [
             'บันทึก Subjective & Objective 26 หัวข้อ พร้อม Live Summary ด้านขวา',
             'เปรียบเทียบตารางสัญญาณชีพย้อนหลัง (VPE Longitudinal Table)',
@@ -885,77 +956,65 @@ export const WORKFLOWS: WorkflowItem[] = [
         subtitle: 'ส่งตรวจหน่วยรังสี และส่งผลกลับห้องตรวจ',
         actor: 'Sideflow (DVM & Imaging Staff)',
         actorType: 'sideflow',
-        target: 'Xray / USG (Support Unit)',
+        target: 'exam room > xray/usg',
         module: 'SIDEFLOW / XRAY & USG',
         output: 'Order slip',
-        action: 'ส่งใบสั่งตรวจและพาสัตว์ไปเอกซเรย์/อัลตราซาวด์ที่หน่วย Xray/USG ก่อนกลับมาประเมินผล',
+        action: 'DVM สั่ง Xray/USG -> สัตว์ไป Xray -> เจ้าหน้าที่ตรวจและส่งผล -> สัตว์กลับห้องตรวจ -> DVM ตรวจต่อ',
         refCode: 'IMG-XRAY-USG',
         time: '0.068s',
         fromNode: 'examGeneral',
-        toNode: 'xrayUsg',
-        laneId: 'sideflow:examGeneral>xrayUsg',
+        toNode: 'examGeneral',
+        laneId: 'owner:examGeneral>xrayUsg',
         activeLanes: [
-          'sideflow:examGeneral>xrayUsg',
-          'sideflow:xrayUsg>examGeneral'
+          'owner:examGeneral>xrayUsg',
+          'owner:xrayUsg>examGeneral',
+          'system:xrayUsg>examGeneral'
         ],
         badgeColor: 'sideflow',
         petOwner: {
           fromNode: 'examGeneral',
-          toNode: 'xrayUsg',
-          statusLabel: 'พาสัตว์ไปตรวจพิเศษที่ห้อง Xray / USG (Sideflow)'
+          toNode: 'examGeneral',
+          statusLabel: 'พาสัตว์ไปตรวจ Xray/USG และกลับมาตรวจต่อที่ Exam Room (Zone A ห้อง 1)',
+          subZone: 'A1'
         },
         packets: [
           {
             id: 'pkt-step5-sideflow-out',
             stream: 'sideflow',
             tone: 'sideflow',
-            laneId: 'sideflow:examGeneral>xrayUsg',
+            laneId: '',
             fromNode: 'examGeneral',
-            toNode: 'xrayUsg',
+            toNode: 'examGeneral',
             tag: 'SIDEFLOW ORDER',
-            title: 'X-ray & USG Request',
-            fields: [
-              { k: 'EXAM CARD', v: 'Attached' },
-              { k: 'STUDY', v: 'Abd USG + Thorax' }
-            ],
-            stopOffsetX: 98,
-            stopOffsetY: -62
+            title: 'Request Xray / USG',
+            stopOffsetX: -145,
+            stopOffsetY: -22
           },
           {
             id: 'pkt-step5-sideflow-back',
             stream: 'sideflow',
             tone: 'sideflow',
-            laneId: 'sideflow:xrayUsg>examGeneral',
+            laneId: '',
             fromNode: 'xrayUsg',
-            toNode: 'examGeneral',
+            toNode: 'xrayUsg',
             tag: 'IMAGING RESULT',
-            title: 'DICOM & USG Report',
+            title: 'DICOM & Report',
             fields: [
               { k: 'STATUS', v: 'Verified' },
-              { k: 'RETURN', v: 'Zone A (#1)' }
+              { k: 'PACS', v: 'Uploaded' }
             ],
-            stopOffsetX: 98,
-            stopOffsetY: -68
+            stopOffsetX: 105,
+            stopOffsetY: -24
           }
         ],
         stationNotes: [
-          {
-            id: 'note-step5-sideflow',
-            nodeId: 'xrayUsg',
-            tone: 'sideflow',
-            roleLabel: 'SIDEFLOW',
-            title: 'Xray / USG',
-            detail: 'ตรวจภาพวินิจฉัย + ส่งผล',
-            offsetX: -90,
-            offsetY: -62
-          },
           {
             id: 'note-step5-dvm',
             nodeId: 'examGeneral',
             tone: 'dvm',
             roleLabel: 'DVM',
-            title: 'Review Plan',
-            detail: 'อ่านผลภาพ & สรุปแผน',
+            title: 'ส่งตรวจ',
+            detail: 'สั่งตรวจภาพวินิจฉัย & อ่านผล',
             offsetX: -90,
             offsetY: -68
           }
@@ -1000,73 +1059,66 @@ export const WORKFLOWS: WorkflowItem[] = [
         subtitle: 'ส่ง order จัดยา ดำเนินการ บันทึกผล ส่งกลับห้องตรวจ',
         actor: 'DVM / Staff / Owner',
         actorType: 'dvm',
-        target: 'Tx Room (ห้องหัตถการ)',
-        module: 'TX ROOM / PROCEDURES',
+        target: 'exam room > tx',
+        module: 'SIDEFLOW / TX',
         output: 'Order slip',
-        action: 'ส่งคำสั่งหัตถการเข้า Tx Room เจ้าหน้าที่และสัตวแพทย์จัดยาฉีด ฉีดยา และทำแผล/หัตถการ',
+        action: 'DVM สั่ง Tx -> สัตว์ไป Tx Room -> เจ้าหน้าที่จัดยาฉีด/ทำหัตถการ -> สัตว์กลับห้องตรวจ -> DVM ตรวจต่อ',
         refCode: 'TX-PROC-108',
         time: '0.084s',
         fromNode: 'examGeneral',
-        toNode: 'txRoom',
+        toNode: 'examGeneral',
         laneId: 'owner:examGeneral>txRoom',
-        activeLanes: ['owner:examGeneral>txRoom', 'card:examGeneral>txRoom'],
+        activeLanes: [
+          'owner:examGeneral>txRoom',
+          'owner:txRoom>examGeneral',
+          'system:txRoom>examGeneral'
+        ],
         badgeColor: 'dvm',
         petOwner: {
           fromNode: 'examGeneral',
-          toNode: 'txRoom',
-          statusLabel: 'พาสัตว์เข้ารับการฉีดยาและทำหัตถการที่ Tx Room'
+          toNode: 'examGeneral',
+          statusLabel: 'พาสัตว์ไปฉีดยา/ทำหัตถการที่ Tx Room และกลับมาตรวจต่อที่ Exam Room (Zone A ห้อง 1)',
+          subZone: 'A1'
         },
         packets: [
           {
-            id: 'pkt-step6-owner',
-            stream: 'owner',
-            tone: 'owner',
-            laneId: 'owner:examGeneral>txRoom',
+            id: 'pkt-step6-sideflow-out',
+            stream: 'sideflow',
+            tone: 'sideflow',
+            laneId: '',
             fromNode: 'examGeneral',
-            toNode: 'txRoom',
-            tag: 'PET & OWNER',
-            title: 'Move to Tx Room',
-            fields: [
-              { k: 'STEP', v: 'Injection / Tx' },
-              { k: 'STATION', v: 'Tx Room' }
-            ]
+            toNode: 'examGeneral',
+            tag: 'SIDEFLOW ORDER',
+            title: 'Request Tx & Procedure',
+            stopOffsetX: -145,
+            stopOffsetY: -22
           },
           {
-            id: 'pkt-step6-card',
-            stream: 'exam-card',
-            tone: 'dvm',
-            laneId: 'card:examGeneral>txRoom',
-            fromNode: 'examGeneral',
+            id: 'pkt-step6-sideflow-back',
+            stream: 'sideflow',
+            tone: 'sideflow',
+            laneId: '',
+            fromNode: 'txRoom',
             toNode: 'txRoom',
-            tag: 'EXAM CARD & TX',
-            title: 'Injectable & Procedure Order',
+            tag: 'TX RECORD',
+            title: 'Tx Record & Report',
             fields: [
-              { k: 'INJECT', v: 'SC / IV Meds' },
-              { k: 'PROC', v: 'Fluid & Wound Care' }
+              { k: 'STATUS', v: 'Completed' },
+              { k: 'STAFF', v: 'Documented' }
             ],
-            stopOffsetX: 0,
-            stopOffsetY: -120
+            stopOffsetX: 105,
+            stopOffsetY: -24
           }
         ],
         stationNotes: [
           {
-            id: 'note-step6-staff',
-            nodeId: 'txRoom',
-            tone: 'staff',
-            roleLabel: 'STAFF',
-            title: 'Prep Tx Meds',
-            detail: 'จัดเตรียมยาฉีด / อุปกรณ์',
-            offsetX: -90,
-            offsetY: -68
-          },
-          {
             id: 'note-step6-dvm',
-            nodeId: 'txRoom',
+            nodeId: 'examGeneral',
             tone: 'dvm',
             roleLabel: 'DVM',
-            title: 'Injection / Tx',
-            detail: 'ฉีดยาและทำหัตถการ',
-            offsetX: 90,
+            title: 'ส่งหัตถการ (Tx Room)',
+            detail: 'สั่งฉีดยา & หัตถการ',
+            offsetX: -90,
             offsetY: -68
           }
         ],
@@ -1101,76 +1153,61 @@ export const WORKFLOWS: WorkflowItem[] = [
         title: '7. จัดยานำกลับ (Rx Prep)',
         titleEn: 'Rx Room Medication Preparation & Billing Transfer',
         subtitle: 'ส่งใบสั่งยาไปห้องจัดยา เจ้าของไปรอที่การเงิน',
-        actor: 'Staff (Rx Room) & Pet Owner',
-        actorType: 'staff',
-        target: 'Rx Room & Cashier',
+        actor: 'DVM / Staff (Rx) / Owner',
+        actorType: 'dvm',
+        target: 'exam room > rx/waiting',
         module: 'RX PREP / BILLING SYNC',
         output: 'Order slip',
-        action: 'ใบสั่งยาวิ่งเข้า Rx Room เพื่อจัดยานำกลับ ส่วน Pet & Owner เดินจาก Tx Room ไปรอชำระเงินที่ Cashier',
+        action: 'DVM สั่งยานำกลับ -> ข้อมูลส่ง Rx Room จัดยา -> ส่งยอดเงินไป Cashier -> Pet ไปรอที่ Waiting Zone (Rx, Cashier)',
         refCode: 'RX-PREP-4350',
         time: '0.098s',
-        fromNode: 'txRoom',
-        toNode: 'rxRoom',
-        laneId: 'card:txRoom>rxRoom',
-        activeLanes: ['card:txRoom>rxRoom', 'owner:txRoom>cashier'],
-        badgeColor: 'staff',
+        fromNode: 'examGeneral',
+        toNode: 'waitingRxCashier',
+        laneId: 'owner:examGeneral>waitingRxCashier',
+        activeLanes: ['system:examGeneral>rxRoom', 'owner:examGeneral>waitingRxCashier'],
+        badgeColor: 'dvm',
         petOwner: {
-          fromNode: 'txRoom',
-          toNode: 'cashier',
-          statusLabel: 'เดินจาก Tx Room ไปติดต่อชำระเงินที่ Cashier'
+          fromNode: 'examGeneral',
+          toNode: 'waitingRxCashier',
+          statusLabel: 'หมอสั่งยานำกลับ -> เดินไปรอที่ Waiting Zone (Rx, Cashier)',
+          subZone: 'A1'
         },
         packets: [
-          {
-            id: 'pkt-step7-card',
-            stream: 'exam-card',
-            tone: 'staff',
-            laneId: 'card:txRoom>rxRoom',
-            fromNode: 'txRoom',
-            toNode: 'rxRoom',
-            tag: 'EXAM CARD (RX)',
-            title: 'Take-Home Meds Order',
-            fields: [
-              { k: 'UNIT', v: 'Rx Room (จัดยา)' },
-              { k: 'ITEMS', v: '4 Prescriptions' }
-            ],
-            stopOffsetX: 95,
-            stopOffsetY: -64
-          },
           {
             id: 'pkt-step7-owner',
             stream: 'owner',
             tone: 'owner',
-            laneId: 'owner:txRoom>cashier',
-            fromNode: 'txRoom',
-            toNode: 'cashier',
+            laneId: 'owner:examGeneral>waitingRxCashier',
+            fromNode: 'examGeneral',
+            toNode: 'waitingRxCashier',
             tag: 'PET & OWNER',
-            title: 'Proceed to Cashier',
+            title: 'Wait for Meds & Bill',
             fields: [
-              { k: 'FROM', v: 'Tx Room' },
-              { k: 'TO', v: 'Cashier' }
+              { k: 'FROM', v: 'Exam Room' },
+              { k: 'TO', v: 'Waiting (Rx, Cashier)' }
             ]
           }
         ],
         stationNotes: [
           {
+            id: 'note-step7-dvm',
+            nodeId: 'examGeneral',
+            tone: 'dvm',
+            roleLabel: 'DVM',
+            title: 'สั่งยานำกลับ',
+            detail: 'สั่งยากลับบ้าน & สรุปยอด',
+            offsetX: -90,
+            offsetY: -68
+          },
+          {
             id: 'note-step7-rx',
             nodeId: 'rxRoom',
             tone: 'staff',
-            roleLabel: 'STAFF (RX)',
-            title: 'Prep Rx Meds',
+            roleLabel: 'STAFF',
+            title: 'Rx Prepare',
             detail: 'จัดยากลับบ้าน + พิมพ์ฉลาก',
-            offsetX: -82,
-            offsetY: -64
-          },
-          {
-            id: 'note-step7-cashier',
-            nodeId: 'cashier',
-            tone: 'system',
-            roleLabel: 'SYSTEM',
-            title: 'Billing Sync',
-            detail: 'Sent charge to Cashier',
-            offsetX: 0,
-            offsetY: -68
+            offsetX: 130,
+            offsetY: -15
           }
         ],
         characterImage: '/images/blueprint/pharmacy.png',
@@ -1206,32 +1243,34 @@ export const WORKFLOWS: WorkflowItem[] = [
         subtitle: 'ออกใบเสร็จ ระบบปิดเคส (Inactive) ปลดล็อกคิวรับยา',
         actor: 'Staff (Cashier) / System',
         actorType: 'system',
-        target: 'Cashier (การเงิน)',
+        target: 'rx > cashier/waiting',
         module: 'CASHIER / AUTO DISCHARGE',
         output: 'ใบเสร็จ',
-        action: 'ชำระเงินออกใบเสร็จ -> ระบบ Discharge Case เปลี่ยน Visit No. เป็น Inactive และปลดล็อกคิวจ่ายยา',
+        action: 'Cashier ตรวจข้อมูลและเรียกคิว -> ชำระเงินออกใบเสร็จ (Auto Discharge) -> ยื่นใบเสร็จที่ Pharmacy -> รอเรียกรับยาที่ Waiting Zone',
         refCode: 'VN-INACTIVE-OK',
         time: '0.112s',
-        fromNode: 'rxRoom',
+        fromNode: 'waitingRxCashier',
         toNode: 'cashier',
-        laneId: 'card:rxRoom>cashier',
+        laneId: 'owner:waitingRxCashier>cashier',
         activeLanes: [
-          'card:rxRoom>cashier',
+          'owner:waitingRxCashier>cashier',
+          'owner:cashier>pharmacy',
+          'owner:pharmacy>waitingRxCashier',
           'system:cashier>pharmacy'
         ],
         badgeColor: 'system',
         petOwner: {
-          fromNode: 'cashier',
-          toNode: 'cashier',
-          statusLabel: 'กำลังชำระเงินและรับใบเสร็จที่ Cashier'
+          fromNode: 'waitingRxCashier',
+          toNode: 'waitingRxCashier',
+          statusLabel: 'เรียกคิวชำระเงินที่ Cashier -> ยื่นใบเสร็จ Pharmacy -> รอเรียกรับยาที่ Waiting Zone (Rx, Cashier)'
         },
         packets: [
           {
             id: 'pkt-step8-sys-pharm',
             stream: 'system',
             tone: 'system',
-            laneId: 'system:cashier>pharmacy',
-            fromNode: 'cashier',
+            laneId: '',
+            fromNode: 'pharmacy',
             toNode: 'pharmacy',
             tag: 'SYSTEM SIGNAL',
             title: 'Payment OK -> Release Meds',
@@ -1239,15 +1278,15 @@ export const WORKFLOWS: WorkflowItem[] = [
               { k: 'RECEIPT', v: 'PAID' },
               { k: 'ACTION', v: 'Unlock Pharmacy' }
             ],
-            stopOffsetX: 0,
-            stopOffsetY: -68
+            stopOffsetX: 130,
+            stopOffsetY: -48
           },
           {
             id: 'pkt-step8-sys-discharge',
             stream: 'exam-card',
             tone: 'staff',
-            laneId: 'card:rxRoom>cashier',
-            fromNode: 'rxRoom',
+            laneId: '',
+            fromNode: 'cashier',
             toNode: 'cashier',
             tag: 'BILLING SUMMARY',
             title: 'Invoice -> Cashier',
@@ -1255,8 +1294,8 @@ export const WORKFLOWS: WorkflowItem[] = [
               { k: 'CASE', v: 'Ready to Pay' },
               { k: 'VISIT NO', v: '-> INACTIVE' }
             ],
-            stopOffsetX: -125,
-            stopOffsetY: -135
+            stopOffsetX: 130,
+            stopOffsetY: -24
           }
         ],
         stationNotes: [
@@ -1265,20 +1304,20 @@ export const WORKFLOWS: WorkflowItem[] = [
             nodeId: 'cashier',
             tone: 'staff',
             roleLabel: 'STAFF',
-            title: 'Payment',
-            detail: 'รับชำระเงิน + ออกใบเสร็จ',
-            offsetX: -90,
-            offsetY: -68
+            title: 'Calling & Payment',
+            detail: 'เรียกชำระเงิน + ออกใบเสร็จ',
+            offsetX: 130,
+            offsetY: -78
           },
           {
-            id: 'note-step8-sys',
-            nodeId: 'cashier',
-            tone: 'system',
-            roleLabel: 'SYSTEM',
-            title: 'Auto Discharge',
-            detail: 'Visit No -> INACTIVE',
-            offsetX: 90,
-            offsetY: -68
+            id: 'note-step8-pharm',
+            nodeId: 'pharmacy',
+            tone: 'staff',
+            roleLabel: 'PHARMACY',
+            title: 'รับใบเสร็จ',
+            detail: 'ยื่นใบเสร็จรอจัดยา',
+            offsetX: 130,
+            offsetY: 20
           }
         ],
         characterImage: '/images/blueprint/cashier.png',
@@ -1306,21 +1345,21 @@ export const WORKFLOWS: WorkflowItem[] = [
         subtitle: 'รับยาพร้อมคำแนะนำการใช้ยา และเดินทางกลับ',
         actor: 'Pet & Owner / Pharmacist',
         actorType: 'owner',
-        target: 'Pharmacy > Exit',
+        target: 'waiting > pharmacy > exit',
         module: 'PHARMACY DISPENSE / EXIT',
         output: 'จ่ายยา',
-        action: 'เจ้าของสัตว์รับยากลับบ้านที่ Pharmacy เภสัชกรอธิบายวิธีใช้ยา และเดินออกทาง Exit',
+        action: 'Pharmacy เรียกคิวรับยา -> รับยาพร้อมคำแนะนำการใช้ยาและเซ็นรับ -> เสร็จสิ้นการรักษา เดินทางกลับทาง Exit',
         refCode: 'EXIT-COMPLETE',
         time: '0.125s',
-        fromNode: 'pharmacy',
+        fromNode: 'waitingRxCashier',
         toNode: 'exit',
         laneId: 'owner:pharmacy>exit',
-        activeLanes: ['owner:cashier>pharmacy', 'card:rxRoom>pharmacy', 'owner:pharmacy>exit'],
+        activeLanes: ['owner:waitingRxCashier>pharmacy', 'owner:pharmacy>exit'],
         badgeColor: 'owner',
         petOwner: {
-          fromNode: 'pharmacy',
+          fromNode: 'waitingRxCashier',
           toNode: 'exit',
-          statusLabel: 'รับยากลับบ้านที่ Pharmacy และเดินทางออกทาง Exit'
+          statusLabel: 'Pharmacy เรียกคิวรับยา -> รับยาและเซ็นรับ -> เดินทางออกทาง Exit'
         },
         packets: [
           {
@@ -1343,21 +1382,11 @@ export const WORKFLOWS: WorkflowItem[] = [
             id: 'note-step9-pharm',
             nodeId: 'pharmacy',
             tone: 'staff',
-            roleLabel: 'STAFF (PHARM)',
-            title: 'Dispense Meds',
-            detail: 'ส่งมอบยา + แนะนำวิธีใช้',
-            offsetX: -25,
-            offsetY: -68
-          },
-          {
-            id: 'note-step9-exit',
-            nodeId: 'exit',
-            tone: 'owner',
-            roleLabel: 'PET & OWNER',
-            title: 'Completed',
-            detail: 'รับยากลับบ้าน (Exit)',
-            offsetX: 25,
-            offsetY: -68
+            roleLabel: 'STAFF',
+            title: 'Calling & Dispense',
+            detail: 'เรียกรับยา และ เซ็นต์รับ',
+            offsetX: 0,
+            offsetY: -90
           }
         ],
         characterImage: '/images/blueprint/pharmacy.png',

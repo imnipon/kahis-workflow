@@ -17,6 +17,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  ChevronUp,
   Sparkles,
   BookOpen,
   Check,
@@ -46,16 +47,21 @@ export default function ExplorerShell() {
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
   const [isManualOpen, setIsManualOpen] = useState<boolean>(false);
   const [isCanvasFullscreen, setIsCanvasFullscreen] = useState<boolean>(false);
+  const [isLogExpanded, setIsLogExpanded] = useState<boolean>(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isCanvasFullscreen) {
-        setIsCanvasFullscreen(false);
+      if (e.key === "Escape") {
+        if (isLogExpanded) {
+          setIsLogExpanded(false);
+        } else if (isCanvasFullscreen) {
+          setIsCanvasFullscreen(false);
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isCanvasFullscreen]);
+  }, [isLogExpanded, isCanvasFullscreen]);
 
   const fallbackStep: WorkflowStep = WORKFLOWS[0].steps[0];
   const currentStep: WorkflowStep =
@@ -105,12 +111,28 @@ export default function ExplorerShell() {
     });
   };
 
-  // Playback Timer
+  // Real-world animation durations for each step matching IsometricCanvas (in ms at 1x speed)
+  // Perfectly synchronized with all phases, movements, packet transfers, and generous reading lingers
+  const STEP_PLAY_DURATIONS_MS: Record<number, number> = {
+    1: 3600,   // Entrance -> Registration (Pet 1.8s + packet 1.9s + linger 1.7s)
+    2: 4000,   // Registration -> Waiting Hall (Pet 1.8s + packet 1.9s + linger 2.1s)
+    3: 11400,  // DVM Call: Call Q (2s) -> signal arrive (4s) -> pet move (7.6s) -> exam start (9.2s) -> linger (11.4s)
+    4: 10500,  // Exam: 4 sequential sub-steps (Phase 1 at 2s, 2 at 3.8s, 3 at 5.6s, 4 at 7.4s) -> linger to read all 4 boxes (10.5s)
+    5: 27500,  // Xray/USG: 12 phases (DVM order, pet to xray, staff exam, pet back, results to DVM) (26s + 1.5s linger)
+    6: 27500,  // Tx Room: 12 phases (DVM order, pet to tx, staff procedure, pet back, results to DVM) (26s + 1.5s linger)
+    7: 17800,  // Rx Prep: 7 phases (DVM order, signal to Rx, pet to waiting, meds prepare, bill summary) (16.3s + 1.5s linger)
+    8: 19000,  // Cashier: 8 phases (Calling, pay bill, invoice discharge, receipt to pharmacy, pet to waiting) (17.6s + 1.4s linger)
+    9: 13000,  // Pharmacy: 5 phases (Calling, meds handover, counseling, exit) (11.6s + 1.4s linger)
+  };
+
+  // Playback Timer: Synchronized with the real animation durations of each step
   useEffect(() => {
     if (!isPlaying) return;
-    const isStep3 = activeWorkflow.steps[currentStepIdx]?.id === 3;
-    const intervalMs = (isStep3 ? 4600 : 2800) / playbackSpeed;
-    const timer = setInterval(() => {
+
+    const stepId = activeWorkflow.steps[currentStepIdx]?.id ?? (currentStepIdx + 1);
+    const durationMs = (STEP_PLAY_DURATIONS_MS[stepId] ?? 4000) / playbackSpeed;
+
+    const timer = setTimeout(() => {
       setCurrentStepIdx((prev) => {
         if (prev < totalSteps - 1) {
           setAnimKey((k) => k + 1);
@@ -120,9 +142,9 @@ export default function ExplorerShell() {
           return prev;
         }
       });
-    }, intervalMs);
+    }, durationMs);
 
-    return () => clearInterval(timer);
+    return () => clearTimeout(timer);
   }, [isPlaying, playbackSpeed, totalSteps, currentStepIdx, activeWorkflow]);
 
   // Keyboard Shortcuts (Space, Left, Right, R, M)
@@ -463,7 +485,10 @@ export default function ExplorerShell() {
               </button>
               <button
                 type="button"
-                onClick={() => setIsCanvasFullscreen((prev) => !prev)}
+                onClick={() => {
+                  if (isLogExpanded) setIsLogExpanded(false);
+                  setIsCanvasFullscreen((prev) => !prev);
+                }}
                 className={`pe-pill-btn ${isCanvasFullscreen ? "is-active text-[#b4531a]" : ""}`}
                 title={isCanvasFullscreen ? "ออกจากโหมดเต็มจอ (Esc)" : "แสดงแผนภาพเต็มหน้าจอ (Full Screen)"}
               >
@@ -575,11 +600,19 @@ export default function ExplorerShell() {
         </section>
 
         {/* -----------------------------------------------------------------------
-            PANEL 4: PACKETS & WORKFLOW LOG (Bottom, columns 2-3, height 248px)
+            PANEL 4: PACKETS & WORKFLOW LOG (Bottom, columns 2-3, expandable upward)
             ----------------------------------------------------------------------- */}
-        <section className="pe-panel pe-packets">
-          <div className="pe-packets-head">
-            <h2 className="pe-panel-title sm">WORKFLOW ACTION LOG</h2>
+        <div className="pe-packets-container">
+          {isLogExpanded && (
+            <div
+              className="pe-packets-backdrop"
+              onClick={() => setIsLogExpanded(false)}
+              title="คลิกเพื่อย่อตารางลง (Esc)"
+            />
+          )}
+          <section className={`pe-panel pe-packets ${isLogExpanded ? "is-expanded" : ""}`}>
+            <div className="pe-packets-head">
+              <h2 className="pe-panel-title sm">WORKFLOW ACTION LOG</h2>
 
             {/* Legend Dots */}
             <div className="pe-legend">
@@ -633,17 +666,17 @@ export default function ExplorerShell() {
               <button
                 type="button"
                 onClick={handleTogglePlay}
-                className="pe-ctrl-btn primary"
-                title="เล่น / หยุดชั่วคราว (Space)"
+                className={`pe-ctrl-btn primary ${isPlaying ? "bg-[#b4531a] text-white border-[#8c3d0f]" : ""}`}
+                title={isPlaying ? "หยุดชั่วคราว (Space)" : "เล่นอัตโนมัติตามเวลาจริงของทุกขั้นตอน (Space)"}
               >
                 {isPlaying ? (
                   <>
-                    <Pause className="w-4 h-4" />
+                    <Pause className="w-4 h-4 fill-current text-amber-200" />
                     <span>PAUSE</span>
                   </>
                 ) : (
                   <>
-                    <Play className="w-4 h-4" />
+                    <Play className="w-4 h-4 fill-current" />
                     <span>PLAY</span>
                   </>
                 )}
@@ -667,6 +700,28 @@ export default function ExplorerShell() {
                 title="เริ่มใหม่ (R)"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (isCanvasFullscreen) setIsCanvasFullscreen(false);
+                  setIsLogExpanded((prev) => !prev);
+                }}
+                className={`pe-ctrl-btn ${isLogExpanded ? "is-active text-[#b4531a] border-[#b4531a]" : ""}`}
+                title={isLogExpanded ? "ย่อแผงตารางลง (Esc)" : "ขยายแผงตารางขึ้นซ้อนทับด้านบน (Expand)"}
+              >
+                {isLogExpanded ? (
+                  <>
+                    <ChevronDown className="w-4 h-4" />
+                    <span className="hidden sm:inline text-[11.5px]">COLLAPSE</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronUp className="w-4 h-4" />
+                    <span className="hidden sm:inline text-[11.5px]">EXPAND</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -725,7 +780,8 @@ export default function ExplorerShell() {
             </table>
           </div>
         </section>
-      </main>
+      </div>
+    </main>
 
       {/* =========================================================================
           3. FULL MANUAL & ARCHITECTURE MODAL (คู่มือระบบ v1.0)

@@ -18,7 +18,10 @@ import {
   ZoomOut,
   Maximize2,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Play,
+  Pause,
+  RotateCcw
 } from "lucide-react";
 
 interface IsometricCanvasProps {
@@ -164,44 +167,57 @@ const STATION_PALETTES: Record<string, StationVisualPalette> = {
     textTitle: "#713f12",
     textSubtitle: "#854d0e"
   },
-  // 8. Rx Room: Pale / Light purple (ห้องจัดยานำกลับ ใช้กล่องสีม่วงจาง)
+  // 8. Rx Room: Soft pastel rose pink (ห้องจัดยานำกลับ ใช้กล่องสีชมพูพาสเทล)
   rxRoom: {
-    top: "#faf5ff",
-    topActive: "#f3e8ff",
-    left: "#e9d5ff",
-    leftActive: "#d8b4fe",
-    right: "#d8b4fe",
-    rightActive: "#c084fc",
-    stroke: "#8b5cf6",
-    strokeActive: "#7c3aed",
-    textTitle: "#4c1d95",
-    textSubtitle: "#6d28d9"
+    top: "#fdf2f8",
+    topActive: "#fce7f3",
+    left: "#fbcfe8",
+    leftActive: "#f9a8d4",
+    right: "#f9a8d4",
+    rightActive: "#f472b6",
+    stroke: "#ec4899",
+    strokeActive: "#db2777",
+    textTitle: "#831843",
+    textSubtitle: "#9d174d"
   },
-  // 9. Cashier: Deep royal purple (เก็บเงิน/ใบเสร็จ/check-out ใช้กล่องสีม่วงเข้ม)
+  // 9. Cashier: Deep royal fuchsia / magenta (เก็บเงิน/ใบเสร็จ ใช้กล่องสีชมพูเข้มฟูเชีย)
   cashier: {
-    top: "#f5f3ff",
-    topActive: "#ede9fe",
-    left: "#c084fc",
-    leftActive: "#a855f7",
-    right: "#a855f7",
-    rightActive: "#9333ea",
-    stroke: "#6b21a8",
-    strokeActive: "#581c87",
-    textTitle: "#3b0764",
-    textSubtitle: "#581c87"
+    top: "#fdf4ff",
+    topActive: "#fae8ff",
+    left: "#f5d0fe",
+    leftActive: "#f0abfc",
+    right: "#f0abfc",
+    rightActive: "#e879f9",
+    stroke: "#c026d3",
+    strokeActive: "#a21caf",
+    textTitle: "#701a75",
+    textSubtitle: "#86198f"
   },
-  // 10. Pharmacy: Same purple as rxRoom (วางคู่กับ Rx ใช้สีม่วงเดียวกับ rx)
+  // 10. Pharmacy: Vibrant rose pink (ห้องจ่ายยา ใช้กล่องสีชมพูกุหลาบสดใส)
   pharmacy: {
-    top: "#faf5ff",
-    topActive: "#f3e8ff",
-    left: "#e9d5ff",
-    leftActive: "#d8b4fe",
-    right: "#d8b4fe",
-    rightActive: "#c084fc",
-    stroke: "#8b5cf6",
-    strokeActive: "#7c3aed",
-    textTitle: "#4c1d95",
-    textSubtitle: "#6d28d9"
+    top: "#fff1f2",
+    topActive: "#ffe4e6",
+    left: "#fecdd3",
+    leftActive: "#fda4af",
+    right: "#fda4af",
+    rightActive: "#fb7185",
+    stroke: "#f43f5e",
+    strokeActive: "#e11d48",
+    textTitle: "#881337",
+    textSubtitle: "#9f1239"
+  },
+  // 10.5. Waiting Zone (Rx, Cashier): Warm cream with rose accents
+  waitingRxCashier: {
+    top: "#fff7ed",
+    topActive: "#ffedd5",
+    left: "#fed7aa",
+    leftActive: "#fdba74",
+    right: "#fbcfe8",
+    rightActive: "#f9a8d4",
+    stroke: "#f43f5e",
+    strokeActive: "#e11d48",
+    textTitle: "#881337",
+    textSubtitle: "#9f1239"
   },
   // 11. Exit: Cool slate / Stone tone (แนวระนาบเดียวกับทางเข้า ด้านขวา ของแมพ)
   exit: {
@@ -218,8 +234,546 @@ const STATION_PALETTES: Record<string, StationVisualPalette> = {
   }
 };
 
+interface SubWindowRole {
+  tag: string;
+  tone: RoleTone;
+}
+
+interface SubWindowSpec {
+  id: string;
+  stepId: number;
+  phase: number;
+  clearOnPhase?: number;
+  roleTone?: RoleTone;
+  roleTag?: string;
+  roles?: SubWindowRole[];
+  text: string;
+  lines?: string[];
+  anchorNode: string;
+  stackSide: "right" | "left" | "top" | "custom";
+  stackIndex: number;
+  customX?: number;
+  customY?: number;
+}
+
+const STEP_SUBWINDOWS: SubWindowSpec[] = [
+  // --- STEP 4: 4 windows on right of examGeneral ---
+  {
+    id: "s4-1",
+    stepId: 4,
+    phase: 1,
+    roleTone: "dvm",
+    roleTag: "[DVM]",
+    text: "ดูประวัติและ Pet's Note",
+    anchorNode: "examGeneral",
+    stackSide: "right",
+    stackIndex: 0
+  },
+  {
+    id: "s4-2",
+    stepId: 4,
+    phase: 2,
+    roleTone: "dvm",
+    roleTag: "[DVM]",
+    text: "บันทึกข้อมูลการตรวจ",
+    anchorNode: "examGeneral",
+    stackSide: "right",
+    stackIndex: 1
+  },
+  {
+    id: "s4-3",
+    stepId: 4,
+    phase: 3,
+    roles: [
+      { tag: "[DVM]", tone: "dvm" },
+      { tag: "[STAFF]", tone: "staff" }
+    ],
+    text: "บันทึกข้อมูล VPE",
+    anchorNode: "examGeneral",
+    stackSide: "right",
+    stackIndex: 2
+  },
+  {
+    id: "s4-4",
+    stepId: 4,
+    phase: 4,
+    roleTone: "dvm",
+    roleTag: "[DVM]",
+    text: "บันทึกข้อมูล Assessment",
+    anchorNode: "examGeneral",
+    stackSide: "right",
+    stackIndex: 3
+  },
+
+  // --- STEP 5: Xray / USG (Phased Stack) ---
+  {
+    id: "s5-1",
+    stepId: 5,
+    phase: 2,
+    clearOnPhase: 10,
+    roleTone: "dvm",
+    roleTag: "[DVM]",
+    text: "order Xray / USG",
+    anchorNode: "examGeneral",
+    stackSide: "right",
+    stackIndex: 0
+  },
+  {
+    id: "s5-2",
+    stepId: 5,
+    phase: 3,
+    clearOnPhase: 10,
+    roleTone: "system",
+    roleTag: "[SYSTEM]",
+    text: "send Q > Xray/USG list",
+    anchorNode: "examGeneral",
+    stackSide: "right",
+    stackIndex: 1
+  },
+  {
+    id: "s5-3",
+    stepId: 5,
+    phase: 4,
+    clearOnPhase: 10,
+    roleTone: "owner",
+    roleTag: "[PET]",
+    text: "ไปรอเรียกที่จุดบริการ Xray/USG",
+    lines: ["ไปรอเรียกที่", "จุดบริการ Xray/USG"],
+    anchorNode: "examGeneral",
+    stackSide: "custom",
+    customX: 649,
+    customY: 268,
+    stackIndex: 2
+  },
+  {
+    id: "s5-4",
+    stepId: 5,
+    phase: 5,
+    roleTone: "staff",
+    roleTag: "[STAFF]",
+    text: "ตรวจสอบ order และ เรียก",
+    anchorNode: "xrayUsg",
+    stackSide: "left",
+    stackIndex: 0
+  },
+  {
+    id: "s5-5",
+    stepId: 5,
+    phase: 6,
+    roleTone: "owner",
+    roleTag: "[PET&OWNER]",
+    text: "เข้ารับบริการ",
+    anchorNode: "xrayUsg",
+    stackSide: "left",
+    stackIndex: 1
+  },
+  {
+    id: "s5-6",
+    stepId: 5,
+    phase: 7,
+    roleTone: "staff",
+    roleTag: "[STAFF]",
+    text: "ปฏิบัติงานรังสี / USG",
+    anchorNode: "xrayUsg",
+    stackSide: "left",
+    stackIndex: 2
+  },
+  {
+    id: "s5-7",
+    stepId: 5,
+    phase: 8,
+    roleTone: "owner",
+    roleTag: "[PET]",
+    text: "กลับห้องตรวจ",
+    anchorNode: "xrayUsg",
+    stackSide: "left",
+    stackIndex: 3
+  },
+  {
+    id: "s5-8",
+    stepId: 5,
+    phase: 9,
+    roleTone: "system",
+    roleTag: "[SYSTEM]",
+    text: "บันทึกรายการหัตถการ&ยา",
+    anchorNode: "xrayUsg",
+    stackSide: "left",
+    stackIndex: 4
+  },
+  {
+    id: "s5-9",
+    stepId: 5,
+    phase: 11,
+    roleTone: "dvm",
+    roleTag: "[DVM]",
+    text: "รับผลและเรียกเคส",
+    anchorNode: "examGeneral",
+    stackSide: "right",
+    stackIndex: 0
+  },
+  {
+    id: "s5-10",
+    stepId: 5,
+    phase: 12,
+    roleTone: "owner",
+    roleTag: "[PET]",
+    text: "เข้าตรวจต่อ",
+    anchorNode: "examGeneral",
+    stackSide: "right",
+    stackIndex: 1
+  },
+
+  // --- STEP 6: Tx Room (Injection / Procedures) ---
+  {
+    id: "s6-1",
+    stepId: 6,
+    phase: 2,
+    clearOnPhase: 10,
+    roleTone: "dvm",
+    roleTag: "[DVM]",
+    text: "order ฉีดยา & ทำหัตถการ",
+    anchorNode: "examGeneral",
+    stackSide: "right",
+    stackIndex: 0
+  },
+  {
+    id: "s6-2",
+    stepId: 6,
+    phase: 3,
+    clearOnPhase: 10,
+    roleTone: "system",
+    roleTag: "[SYSTEM]",
+    text: "send Q > Tx list",
+    anchorNode: "examGeneral",
+    stackSide: "right",
+    stackIndex: 1
+  },
+  {
+    id: "s6-3",
+    stepId: 6,
+    phase: 4,
+    clearOnPhase: 10,
+    roleTone: "owner",
+    roleTag: "[PET]",
+    text: "ไปรอเรียกที่จุดบริการ Tx Room",
+    lines: ["ไปรอเรียกที่", "จุดบริการ Tx Room"],
+    anchorNode: "examGeneral",
+    stackSide: "custom",
+    customX: 649,
+    customY: 268,
+    stackIndex: 2
+  },
+  {
+    id: "s6-4",
+    stepId: 6,
+    phase: 5,
+    roleTone: "staff",
+    roleTag: "[STAFF]",
+    text: "ตรวจสอบ order และ เรียก",
+    anchorNode: "txRoom",
+    stackSide: "left",
+    stackIndex: 0
+  },
+  {
+    id: "s6-5",
+    stepId: 6,
+    phase: 6,
+    roleTone: "owner",
+    roleTag: "[PET&OWNER]",
+    text: "เข้ารับบริการ",
+    anchorNode: "txRoom",
+    stackSide: "left",
+    stackIndex: 1
+  },
+  {
+    id: "s6-6",
+    stepId: 6,
+    phase: 7,
+    roleTone: "staff",
+    roleTag: "[STAFF]",
+    text: "ทำหัตถการ & ยาฉีด",
+    anchorNode: "txRoom",
+    stackSide: "left",
+    stackIndex: 2
+  },
+  {
+    id: "s6-7",
+    stepId: 6,
+    phase: 8,
+    roleTone: "owner",
+    roleTag: "[PET]",
+    text: "กลับห้องตรวจ",
+    anchorNode: "txRoom",
+    stackSide: "left",
+    stackIndex: 3
+  },
+  {
+    id: "s6-8",
+    stepId: 6,
+    phase: 9,
+    roleTone: "system",
+    roleTag: "[SYSTEM]",
+    text: "บันทึกรายการหัตถการ&ยา",
+    anchorNode: "txRoom",
+    stackSide: "left",
+    stackIndex: 4
+  },
+  {
+    id: "s6-9",
+    stepId: 6,
+    phase: 11,
+    roleTone: "dvm",
+    roleTag: "[DVM]",
+    text: "ตรวจประเมินผลหลังหัตถการ",
+    anchorNode: "examGeneral",
+    stackSide: "right",
+    stackIndex: 0
+  },
+  {
+    id: "s6-10",
+    stepId: 6,
+    phase: 12,
+    roleTone: "owner",
+    roleTag: "[PET]",
+    text: "เข้าตรวจต่อ",
+    anchorNode: "examGeneral",
+    stackSide: "right",
+    stackIndex: 1
+  },
+
+  // --- STEP 7: Take-Home Meds & Waiting Zone ---
+  {
+    id: "s7-1",
+    stepId: 7,
+    phase: 2,
+    roleTone: "dvm",
+    roleTag: "[DVM]",
+    text: "สั่งยานำกลับ",
+    anchorNode: "examGeneral",
+    stackSide: "right",
+    stackIndex: 0
+  },
+  {
+    id: "s7-2",
+    stepId: 7,
+    phase: 3,
+    roleTone: "system",
+    roleTag: "[SYS]",
+    text: "ส่งข้อมูลไปยังห้อง Rx เพื่อจัดยา",
+    anchorNode: "examGeneral",
+    stackSide: "right",
+    stackIndex: 1
+  },
+  {
+    id: "s7-5",
+    stepId: 7,
+    phase: 4,
+    roleTone: "owner",
+    roleTag: "[PET]",
+    text: "ไปรอที่ Waiting Zone (Rx, Cashier)",
+    lines: ["ไปรอที่ Waiting Zone", "(Rx, Cashier)"],
+    anchorNode: "waitingRxCashier",
+    stackSide: "custom",
+    customX: 735,
+    customY: 375,
+    stackIndex: 0
+  },
+  {
+    id: "s7-3a",
+    stepId: 7,
+    phase: 5,
+    roleTone: "staff",
+    roleTag: "[STAFF]",
+    text: "จัดยานำกลับตาม order",
+    anchorNode: "rxRoom",
+    stackSide: "left",
+    stackIndex: 0
+  },
+  {
+    id: "s7-3b",
+    stepId: 7,
+    phase: 6,
+    roleTone: "staff",
+    roleTag: "[STAFF]",
+    text: "ลงข้อมูลยานำกลับ",
+    anchorNode: "rxRoom",
+    stackSide: "left",
+    stackIndex: 1
+  },
+  {
+    id: "s7-4",
+    stepId: 7,
+    phase: 7,
+    roleTone: "system",
+    roleTag: "[SYSTEM]",
+    text: "สรุปข้อมูลส่งการเงิน",
+    anchorNode: "rxRoom",
+    stackSide: "left",
+    stackIndex: 2
+  },
+
+  // --- STEP 8: Cashier Payment & Receipt ---
+  {
+    id: "s8-1",
+    stepId: 8,
+    phase: 1,
+    roleTone: "staff",
+    roleTag: "[STAFF]",
+    text: "ตรวจสอบข้อมูลค่ารักษา",
+    anchorNode: "cashier",
+    stackSide: "custom",
+    customX: 665,
+    customY: 400,
+    stackIndex: 0
+  },
+  {
+    id: "s8-2",
+    stepId: 8,
+    phase: 2,
+    roleTone: "system",
+    roleTag: "[SYSTEM]",
+    text: "Calling คิวชำระเงิน",
+    anchorNode: "cashier",
+    stackSide: "custom",
+    customX: 665,
+    customY: 425,
+    stackIndex: 1
+  },
+  {
+    id: "s8-3",
+    stepId: 8,
+    phase: 3,
+    roleTone: "owner",
+    roleTag: "[PET]",
+    text: "ไปชำระเงินที่ Cashier",
+    anchorNode: "cashier",
+    stackSide: "custom",
+    customX: 665,
+    customY: 450,
+    stackIndex: 2
+  },
+  {
+    id: "s8-4",
+    stepId: 8,
+    phase: 4,
+    roleTone: "owner",
+    roleTag: "[PET]",
+    text: "ได้รับใบเสร็จ (Discharged)",
+    anchorNode: "cashier",
+    stackSide: "custom",
+    customX: 665,
+    customY: 475,
+    stackIndex: 3
+  },
+  {
+    id: "s8-5",
+    stepId: 8,
+    phase: 6,
+    roleTone: "owner",
+    roleTag: "[PET]",
+    text: "ยื่นใบเสร็จที่ Pharmacy",
+    anchorNode: "waitingRxCashier",
+    stackSide: "custom",
+    customX: 600,
+    customY: 285,
+    stackIndex: 0
+  },
+  {
+    id: "s8-6",
+    stepId: 8,
+    phase: 7,
+    roleTone: "owner",
+    roleTag: "[PET]",
+    text: "รอเรียกรับยาที่ Waiting Zone",
+    anchorNode: "waitingRxCashier",
+    stackSide: "custom",
+    customX: 600,
+    customY: 312,
+    stackIndex: 0
+  },
+
+  // --- STEP 9: Pharmacy Handover & Exit ---
+  {
+    id: "s9-1",
+    stepId: 9,
+    phase: 1,
+    roleTone: "staff",
+    roleTag: "[STAFF]",
+    text: "Calling เรียกคิวรับยา",
+    anchorNode: "pharmacy",
+    stackSide: "custom",
+    customX: 710,
+    customY: 220,
+    stackIndex: 0
+  },
+  {
+    id: "s9-2",
+    stepId: 9,
+    phase: 2,
+    roleTone: "owner",
+    roleTag: "[PET]",
+    text: "มารับยา และ เซ็นต์รับ",
+    anchorNode: "pharmacy",
+    stackSide: "custom",
+    customX: 710,
+    customY: 245,
+    stackIndex: 1
+  },
+  {
+    id: "s9-3",
+    stepId: 9,
+    phase: 3,
+    roleTone: "system",
+    roleTag: "[SYS]",
+    text: "บันทึกข้อมูลการจ่ายยา",
+    anchorNode: "pharmacy",
+    stackSide: "custom",
+    customX: 710,
+    customY: 270,
+    stackIndex: 2
+  },
+  {
+    id: "s9-4",
+    stepId: 9,
+    phase: 4,
+    roleTone: "owner",
+    roleTag: "[PET]",
+    text: "เสร็จสิ้น เดินทางกลับ (Exit)",
+    anchorNode: "exit",
+    stackSide: "custom",
+    customX: 1115,
+    customY: 246,
+    stackIndex: 0
+  }
+];
+
+function getSubWindowPos(sw: SubWindowSpec): { x: number; y: number } {
+  if (sw.stackSide === "custom" && sw.customX !== undefined && sw.customY !== undefined) {
+    return { x: sw.customX, y: sw.customY };
+  }
+  const st = STATIONS[sw.anchorNode];
+  if (!st) return { x: 0, y: 0 };
+  if (sw.stackSide === "right") {
+    return {
+      x: st.x + 94,
+      y: st.y - 105 + sw.stackIndex * 25
+    };
+  } else if (sw.stackSide === "left") {
+    return {
+      x: st.x - 95,
+      y: st.y - 82 + sw.stackIndex * 25
+    };
+  } else if (sw.stackSide === "top") {
+    return {
+      x: st.x,
+      y: st.y - 64 + sw.stackIndex * 25
+    };
+  }
+  return { x: st.x, y: st.y - 60 };
+}
+
 function getStepFocusNodeIds(step: WorkflowStep): Set<string> {
-  return new Set<string>([
+  const ids = new Set<string>([
     step.fromNode,
     step.toNode,
     step.petOwner.fromNode,
@@ -227,6 +781,30 @@ function getStepFocusNodeIds(step: WorkflowStep): Set<string> {
     ...step.stationNotes.map((n) => n.nodeId),
     ...step.packets.flatMap((p) => [p.fromNode, p.toNode])
   ]);
+  if (step.id === 5) {
+    ids.add("examGeneral");
+    ids.add("xrayUsg");
+  }
+  if (step.id === 6) {
+    ids.add("examGeneral");
+    ids.add("txRoom");
+  }
+  if (step.id === 7) {
+    ids.add("examGeneral");
+    ids.add("waitingRxCashier");
+    ids.add("rxRoom");
+  }
+  if (step.id === 8) {
+    ids.add("waitingRxCashier");
+    ids.add("cashier");
+    ids.add("pharmacy");
+  }
+  if (step.id === 9) {
+    ids.add("waitingRxCashier");
+    ids.add("pharmacy");
+    ids.add("exit");
+  }
+  return ids;
 }
 
 function computeStepCameraBox(
@@ -274,6 +852,14 @@ function computeStepCameraBox(
       minY = Math.min(minY, ey - 24);
       maxY = Math.max(maxY, ey + 24);
     });
+
+  STEP_SUBWINDOWS.filter((sub) => sub.stepId === step.id).forEach((sub) => {
+    const pos = getSubWindowPos(sub);
+    minX = Math.min(minX, pos.x - 88);
+    maxX = Math.max(maxX, pos.x + 88);
+    minY = Math.min(minY, pos.y - 14);
+    maxY = Math.max(maxY, pos.y + 14);
+  });
 
   if (!isFinite(minX)) return FULL_VIEWBOX;
 
@@ -388,6 +974,7 @@ export default function IsometricCanvas({
   viewMode,
   playbackSpeed = 1,
   animKey = 0,
+  onSelectStep,
   onSwitchView
 }: IsometricCanvasProps) {
   const [selectedWireframeIdx, setSelectedWireframeIdx] = useState(0);
@@ -407,7 +994,22 @@ export default function IsometricCanvas({
   const [step3PulseNode, setStep3PulseNode] = useState<string>("examGeneral");
   const [step3CustomStatus, setStep3CustomStatus] = useState<string>("");
   const [step3PetArrived, setStep3PetArrived] = useState<boolean>(false);
+  const [currentPhase, setCurrentPhase] = useState<number>(0);
+  const [petOverridePos, setPetOverridePos] = useState<{ x: number; y: number; statusText: string } | null>(null);
+  const [isPaused, setIsPaused] = useState<boolean>(false);
+  const isPausedRef = useRef<boolean>(false);
+  isPausedRef.current = isPaused;
+  const [stepReplayKey, setStepReplayKey] = useState<number>(0);
   const rafRef = useRef<number | null>(null);
+
+  const handleTogglePause = () => {
+    setIsPaused((p) => !p);
+  };
+
+  const handleRerunStep = () => {
+    setIsPaused(false);
+    setStepReplayKey((k) => k + 1);
+  };
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const camRafRef = useRef<number | null>(null);
@@ -543,19 +1145,23 @@ export default function IsometricCanvas({
   useEffect(() => {
     setSelectedWireframeIdx(0);
     setZoomLevel(1);
+    setIsPaused(false);
     setStep3PetArrived(false);
     setAnimProgress(0);
     setPacketProgress(0);
     setStep3PacketVisible(false);
     setStep3GreenLaneActive(false);
+    setCurrentPhase(0);
+    setPetOverridePos(null);
     if (currentStep.uiWireframes.length === 0 && sceneLayout === "ui-only") {
       setSceneLayout("split");
     }
   }, [currentStep.id, currentStep.uiWireframes.length, sceneLayout]);
 
-  // Smooth RAF animation for Persistent Pet & Owner + Moving Packets
+  // Smooth RAF animation for Persistent Pet & Owner + Moving Packets + Sub-steps
   useEffect(() => {
-    let startTime: number | null = null;
+    let lastTs: number | null = null;
+    let elapsed = 0;
     const isStep3 = currentStep.id === 3;
 
     // Reset progress and states on step change or replay
@@ -564,21 +1170,111 @@ export default function IsometricCanvas({
     setStep3PetArrived(false);
     setStep3PacketVisible(false);
     setStep3GreenLaneActive(false);
+    setCurrentPhase(0);
+    setPetOverridePos(null);
 
     // Standard step durations
-    const transitionDuration = 1150 / playbackSpeed;
-    const packetDuration = 1250 / playbackSpeed;
+    const transitionDuration = 1800 / playbackSpeed;
+    const packetDuration = 1900 / playbackSpeed;
 
-    // Step 3 phased timeline durations (scaled by playbackSpeed)
-    const tCallQueue = 950 / playbackSpeed;
-    const tSignalArrive = 2150 / playbackSpeed;
-    const tPetStart = 2600 / playbackSpeed;
-    const tPetArrive = 3850 / playbackSpeed;
-    const tStep3Total = 4200 / playbackSpeed;
+    // Step 3 phased timeline durations (scaled by playbackSpeed) - generous pacing with 2.0s initial linger
+    const tCallQueue = 2000 / playbackSpeed;
+    const tSignalArrive = 4000 / playbackSpeed;
+    const tPetStart = 5200 / playbackSpeed;
+    const tPetArrive = 7600 / playbackSpeed;
+    const tFadeOutCall = tPetArrive + 1600 / playbackSpeed;
+    const tStep3Total = tFadeOutCall + 1000 / playbackSpeed;
+
+    // Step 4: 4 sequential sub-steps with initial delay 2000ms
+    const tSub4 = 1800 / playbackSpeed;
+    const tPhase1 = 2000 / playbackSpeed;
+    const tPhase2 = tPhase1 + tSub4;
+    const tPhase3 = tPhase2 + tSub4;
+    const tPhase4 = tPhase3 + tSub4;
+    const tStep4Total = tPhase4 + 1200 / playbackSpeed;
+
+    // Step 5: Xray / USG (Initial pause 2000ms, sub-step 1800ms, walk 2500ms)
+    const tSub5 = 1800 / playbackSpeed;
+    const tWalkOut5 = 2500 / playbackSpeed;
+    const tWalkBack5 = 2500 / playbackSpeed;
+    const p1_5 = 2000 / playbackSpeed;
+    const p2_5 = p1_5 + tSub5;
+    const p3_5 = p2_5 + tSub5;
+    const p4_5 = p3_5 + tSub5;
+    const p5_5 = p4_5 + tWalkOut5;
+    const p6_5 = p5_5 + tSub5;
+    const p7_5 = p6_5 + tSub5;
+    const p8_5 = p7_5 + tSub5;
+    const p9_5 = p8_5 + tWalkBack5;
+    const p10_5 = p9_5 + tSub5;
+    const p11_5 = p10_5 + tSub5;
+    const p12_5 = p11_5 + tSub5;
+    const tStep5Total = p12_5 + tSub5 + 1000 / playbackSpeed;
+
+    // Step 6: Tx Room (Initial pause 2000ms, sub-step 1800ms, walk 2500ms)
+    const tSub6 = 1800 / playbackSpeed;
+    const tWalkOut6 = 2500 / playbackSpeed;
+    const tWalkBack6 = 2500 / playbackSpeed;
+    const p1_6 = 2000 / playbackSpeed;
+    const p2_6 = p1_6 + tSub6;
+    const p3_6 = p2_6 + tSub6;
+    const p4_6 = p3_6 + tSub6;
+    const p5_6 = p4_6 + tWalkOut6;
+    const p6_6 = p5_6 + tSub6;
+    const p7_6 = p6_6 + tSub6;
+    const p8_6 = p7_6 + tSub6;
+    const p9_6 = p8_6 + tWalkBack6;
+    const p10_6 = p9_6 + tSub6;
+    const p11_6 = p10_6 + tSub6;
+    const p12_6 = p11_6 + tSub6;
+    const tStep6Total = p12_6 + tSub6 + 1000 / playbackSpeed;
+
+    // Step 7: Take-Home Meds & Waiting Zone (Initial pause 2000ms, sub-step 1800ms, walk 2500ms)
+    const tSub7 = 1800 / playbackSpeed;
+    const tWalk7 = 2500 / playbackSpeed;
+    const p1_7 = 2000 / playbackSpeed;
+    const p2_7 = p1_7 + tSub7;
+    const p3_7 = p2_7 + tSub7;
+    const p4_7 = p3_7 + tSub7;
+    const p5_7 = p4_7 + tWalk7;
+    const p6_7 = p5_7 + tSub7;
+    const p7_7 = p6_7 + tSub7;
+    const tStep7Total = p7_7 + tSub7 + 1000 / playbackSpeed;
+
+    // Step 8: Cashier Calling & Receipt (Initial pause 2000ms, sub-step 1800ms, walk 2400ms)
+    const tSub8 = 1800 / playbackSpeed;
+    const tWalk8 = 2400 / playbackSpeed;
+    const p1_8 = 2000 / playbackSpeed;
+    const p2_8 = p1_8 + tSub8;
+    const p3_8 = p2_8 + tSub8;
+    const p4_8 = p3_8 + tWalk8;
+    const p5_8 = p4_8 + tSub8;
+    const p6_8 = p5_8 + tSub8;
+    const p7_8 = p6_8 + tWalk8;
+    const p8_8 = p7_8 + tWalk8;
+    const tStep8Total = p8_8 + 1200 / playbackSpeed;
+
+    // Step 9: Pharmacy Dispense & Exit (Initial pause 2000ms, sub-step 1800ms, walk 2400ms)
+    const tSub9 = 1800 / playbackSpeed;
+    const tWalk9 = 2400 / playbackSpeed;
+    const p1_9 = 2000 / playbackSpeed;
+    const p2_9 = p1_9 + tSub9;
+    const p3_9 = p2_9 + tWalk9;
+    const p4_9 = p3_9 + tSub9;
+    const p5_9 = p4_9 + tWalk9;
+    const tStep9Total = p5_9 + 1200 / playbackSpeed;
 
     const tick = (timestamp: number) => {
-      if (startTime === null) startTime = timestamp;
-      const elapsed = timestamp - startTime;
+      if (lastTs === null) lastTs = timestamp;
+      const delta = timestamp - lastTs;
+      lastTs = timestamp;
+
+      if (isPausedRef.current) {
+        rafRef.current = requestAnimationFrame(tick);
+        return;
+      }
+
+      elapsed += delta;
 
       if (isStep3) {
         if (elapsed < tCallQueue) {
@@ -610,27 +1306,337 @@ export default function IsometricCanvas({
           setStep3CustomStatus("จอ TV อัปเดตคิว WA001 เข้าตรวจ Zone A ห้อง 1 · เจ้าของเตรียมพาสัตว์เข้าห้อง");
           setStep3PetArrived(false);
         } else if (elapsed < tPetArrive) {
-          // 3. Pet & Owner moves to exam room; when reaching, system call disappears
+          // 3. Pet & Owner moves to exam room (Keep system call window visible!)
           const petFrac = Math.min(1, (elapsed - tPetStart) / (tPetArrive - tPetStart));
           setAnimProgress(easeInOutCubic(petFrac));
           setPacketProgress(1);
-          setStep3PacketVisible(petFrac < 0.88);
+          setStep3PacketVisible(true);
           setStep3GreenLaneActive(petFrac < 0.7);
           setStep3PulseNode(petFrac > 0.65 ? "examGeneral" : "waitingHall");
           setStep3CustomStatus("เดินเข้าห้องตรวจ Exam Room (General · Zone A ห้อง 1)");
           setStep3PetArrived(false);
+        } else if (elapsed < tFadeOutCall) {
+          // 4. Reached exam room: DVM starts exam, system call stays visible for 1 full second!
+          setAnimProgress(1);
+          setPacketProgress(1);
+          setStep3PacketVisible(true);
+          setStep3GreenLaneActive(false);
+          setStep3PulseNode("examGeneral");
+          setStep3CustomStatus("เข้าห้องตรวจเรียบร้อย (Zone A ห้อง 1) · สัตวแพทย์เริ่มตรวจรักษา");
+          setStep3PetArrived(true);
         } else {
-          // 3. Reached exam room: system call gone, exam room pulses, DVM begins exam process
+          // 5. 1s after DVM started: system call fades out and disappears!
           setAnimProgress(1);
           setPacketProgress(1);
           setStep3PacketVisible(false);
           setStep3GreenLaneActive(false);
           setStep3PulseNode("examGeneral");
-          setStep3CustomStatus("เข้าห้องตรวจเรียบร้อย (Zone A ห้อง 1) · สัตวแพทย์เริ่มตรวจ");
+          setStep3CustomStatus("สัตวแพทย์เริ่มตรวจรักษาในห้องตรวจ");
           setStep3PetArrived(true);
         }
 
         if (elapsed < tStep3Total) {
+          rafRef.current = requestAnimationFrame(tick);
+        }
+      } else if (currentStep.id === 4) {
+        // Step 4: 4 sequential sub-steps
+        setAnimProgress(1);
+        setPacketProgress(1);
+        setPetOverridePos(null);
+
+        if (elapsed < tPhase1) {
+          setCurrentPhase(0);
+        } else if (elapsed < tPhase2) {
+          setCurrentPhase(1);
+        } else if (elapsed < tPhase3) {
+          setCurrentPhase(2);
+        } else if (elapsed < tPhase4) {
+          setCurrentPhase(3);
+        } else {
+          setCurrentPhase(4);
+        }
+
+        if (elapsed < tStep4Total) {
+          rafRef.current = requestAnimationFrame(tick);
+        }
+      } else if (currentStep.id === 5) {
+        // Step 5: Xray / USG (12 sub-steps with pet roundtrip and data return)
+        const stExam = STATIONS.examGeneral;
+        const stXray = STATIONS.xrayUsg;
+
+        if (elapsed < p1_5) {
+          setCurrentPhase(0);
+          setPetOverridePos(null);
+        } else if (elapsed < p2_5) {
+          setCurrentPhase(1);
+          setPetOverridePos(null);
+        } else if (elapsed < p3_5) {
+          setCurrentPhase(2);
+          setPetOverridePos(null);
+        } else if (elapsed < p4_5) {
+          setCurrentPhase(3);
+          setPetOverridePos(null);
+        } else if (elapsed < p5_5) {
+          setCurrentPhase(4);
+          const f = Math.min(1, (elapsed - p4_5) / (p5_5 - p4_5));
+          const eased = easeInOutCubic(f);
+          setPetOverridePos({
+            x: stExam.x,
+            y: stExam.y + (stXray.y - stExam.y) * eased,
+            statusText: "พาสัตว์ไปรอเรียกที่จุดบริการ Xray / USG"
+          });
+        } else if (elapsed < p6_5) {
+          setCurrentPhase(5);
+          setPetOverridePos({ x: stXray.x, y: stXray.y, statusText: "เจ้าหน้าที่ Xray/USG ตรวจสอบ order และเรียกเคส" });
+        } else if (elapsed < p7_5) {
+          setCurrentPhase(6);
+          setPetOverridePos({ x: stXray.x, y: stXray.y, statusText: "พาสัตว์เข้ารับการตรวจ Xray / USG" });
+        } else if (elapsed < p8_5) {
+          setCurrentPhase(7);
+          setPetOverridePos({ x: stXray.x, y: stXray.y, statusText: "เจ้าหน้าที่ปฏิบัติงานตรวจรังสีวินิจฉัย" });
+        } else if (elapsed < p9_5) {
+          setCurrentPhase(8);
+          const f = Math.min(1, (elapsed - p8_5) / (p9_5 - p8_5));
+          const eased = easeInOutCubic(f);
+          setPetOverridePos({
+            x: stExam.x,
+            y: stXray.y + (stExam.y - stXray.y) * eased,
+            statusText: "เสร็จสิ้นการตรวจรังสี พาสัตว์กลับห้องตรวจ (Exam Room)"
+          });
+        } else if (elapsed < p10_5) {
+          setCurrentPhase(9);
+          setPetOverridePos({ x: stExam.x, y: stExam.y, statusText: "บันทึกผล Xray/USG ลงระบบเรียบร้อย กลับถึงห้องตรวจ" });
+        } else if (elapsed < p11_5) {
+          setCurrentPhase(10);
+          setPetOverridePos({ x: stExam.x, y: stExam.y, statusText: "ส่งผลภาพถ่ายรังสีและรายงานกลับห้องตรวจ (System Data Flow)" });
+        } else if (elapsed < p12_5) {
+          setCurrentPhase(11);
+          setPetOverridePos({ x: stExam.x, y: stExam.y, statusText: "สัตวแพทย์รับผลตรวจและเรียกเข้าห้องตรวจต่อ" });
+        } else {
+          setCurrentPhase(12);
+          setPetOverridePos({ x: stExam.x, y: stExam.y, statusText: "เข้าห้องตรวจต่อ สัตวแพทย์อธิบายผลภาพถ่ายรังสี" });
+        }
+
+        if (elapsed < tStep5Total) {
+          rafRef.current = requestAnimationFrame(tick);
+        }
+      } else if (currentStep.id === 6) {
+        // Step 6: Tx Room (12 sub-steps with pet roundtrip to txRoom and data return)
+        const stExam = STATIONS.examGeneral;
+        const stTx = STATIONS.txRoom;
+
+        if (elapsed < p1_6) {
+          setCurrentPhase(0);
+          setPetOverridePos(null);
+        } else if (elapsed < p2_6) {
+          setCurrentPhase(1);
+          setPetOverridePos(null);
+        } else if (elapsed < p3_6) {
+          setCurrentPhase(2);
+          setPetOverridePos(null);
+        } else if (elapsed < p4_6) {
+          setCurrentPhase(3);
+          setPetOverridePos(null);
+        } else if (elapsed < p5_6) {
+          setCurrentPhase(4);
+          const f = Math.min(1, (elapsed - p4_6) / (p5_6 - p4_6));
+          const eased = easeInOutCubic(f);
+          setPetOverridePos({
+            x: stExam.x + (stTx.x - stExam.x) * eased,
+            y: stExam.y + (stTx.y - stExam.y) * eased,
+            statusText: "พาสัตว์ไปรอเรียกที่ห้องหัตถการ (Tx Room)"
+          });
+        } else if (elapsed < p6_6) {
+          setCurrentPhase(5);
+          setPetOverridePos({ x: stTx.x, y: stTx.y, statusText: "เจ้าหน้าที่ Tx Room ตรวจสอบ order และเรียกเคส" });
+        } else if (elapsed < p7_6) {
+          setCurrentPhase(6);
+          setPetOverridePos({ x: stTx.x, y: stTx.y, statusText: "พาสัตว์เข้ารับบริการฉีดยา / ทำหัตถการ" });
+        } else if (elapsed < p8_6) {
+          setCurrentPhase(7);
+          setPetOverridePos({ x: stTx.x, y: stTx.y, statusText: "เจ้าหน้าที่และสัตวแพทย์จัดยาฉีด ฉีดยา & ทำแผล" });
+        } else if (elapsed < p9_6) {
+          setCurrentPhase(8);
+          const f = Math.min(1, (elapsed - p8_6) / (p9_6 - p8_6));
+          const eased = easeInOutCubic(f);
+          setPetOverridePos({
+            x: stTx.x + (stExam.x - stTx.x) * eased,
+            y: stTx.y + (stExam.y - stTx.y) * eased,
+            statusText: "ทำหัตถการเสร็จสิ้น พาสัตว์กลับห้องตรวจ (Exam Room)"
+          });
+        } else if (elapsed < p10_6) {
+          setCurrentPhase(9);
+          setPetOverridePos({ x: stExam.x, y: stExam.y, statusText: "บันทึกผลรายการหัตถการลงระบบเรียบร้อย กลับถึงห้องตรวจ" });
+        } else if (elapsed < p11_6) {
+          setCurrentPhase(10);
+          setPetOverridePos({ x: stExam.x, y: stExam.y, statusText: "ส่งผลและบันทึกรายการหัตถการกลับห้องตรวจ (System Data Flow)" });
+        } else if (elapsed < p12_6) {
+          setCurrentPhase(11);
+          setPetOverridePos({ x: stExam.x, y: stExam.y, statusText: "สัตวแพทย์ตรวจประเมินผลหลังหัตถการ" });
+        } else {
+          setCurrentPhase(12);
+          setPetOverridePos({ x: stExam.x, y: stExam.y, statusText: "เข้าห้องตรวจต่อ สัตวแพทย์สรุปอาการหลังหัตถการ" });
+        }
+
+        if (elapsed < tStep6Total) {
+          rafRef.current = requestAnimationFrame(tick);
+        }
+      } else if (currentStep.id === 7) {
+        // Step 7: Take-Home Meds & Waiting Zone (Starts from exam room)
+        const stExam = STATIONS.examGeneral;
+        const stWait = STATIONS.waitingRxCashier;
+
+        if (elapsed < p1_7) {
+          setCurrentPhase(0);
+          setPetOverridePos(null);
+        } else if (elapsed < p2_7) {
+          setCurrentPhase(1);
+          setPetOverridePos(null);
+        } else if (elapsed < p3_7) {
+          setCurrentPhase(2);
+          setPetOverridePos(null);
+        } else if (elapsed < p4_7) {
+          setCurrentPhase(3);
+          setPetOverridePos({ x: stExam.x, y: stExam.y, statusText: "ส่งข้อมูลคำสั่งยานำกลับไปยังห้อง Rx เพื่อจัดยา" });
+        } else if (elapsed < p5_7) {
+          setCurrentPhase(4);
+          const f = Math.min(1, (elapsed - p4_7) / (p5_7 - p4_7));
+          const eased = easeInOutCubic(f);
+          setPetOverridePos({
+            x: stExam.x + (stWait.x - stExam.x) * eased,
+            y: stExam.y + (stWait.y - stExam.y) * eased,
+            statusText: "เดินออกจากห้องตรวจ ไปรอที่ Waiting Zone (Rx, Cashier)"
+          });
+        } else if (elapsed < p6_7) {
+          setCurrentPhase(5);
+          setPetOverridePos({
+            x: stWait.x,
+            y: stWait.y,
+            statusText: "เจ้าหน้าที่ห้อง Rx เริ่มจัดยานำกลับตาม order"
+          });
+        } else if (elapsed < p7_7) {
+          setCurrentPhase(6);
+          setPetOverridePos({
+            x: stWait.x,
+            y: stWait.y,
+            statusText: "เจ้าหน้าที่ห้อง Rx บันทึกและลงข้อมูลยานำกลับ"
+          });
+        } else {
+          setCurrentPhase(7);
+          setPetOverridePos({
+            x: stWait.x,
+            y: stWait.y,
+            statusText: "ระบบรวบรวมค่ารักษาและส่งข้อมูลการเงิน (Billing Summary) · นั่งรอเรียกคิว"
+          });
+        }
+
+        if (elapsed < tStep7Total) {
+          rafRef.current = requestAnimationFrame(tick);
+        }
+      } else if (currentStep.id === 8) {
+        // Step 8: Cashier Calling & Receipt Handover
+        const stWait = STATIONS.waitingRxCashier;
+        const stCashier = STATIONS.cashier;
+        const stPharm = STATIONS.pharmacy;
+
+        if (elapsed < p1_8) {
+          setCurrentPhase(0);
+          setPetOverridePos({ x: stWait.x, y: stWait.y, statusText: "รอเรียกคิวชำระเงินที่ Waiting Zone" });
+        } else if (elapsed < p2_8) {
+          setCurrentPhase(1);
+          setPetOverridePos({ x: stWait.x, y: stWait.y, statusText: "เจ้าหน้าที่การเงินตรวจสอบข้อมูลค่ารักษา" });
+        } else if (elapsed < p3_8) {
+          setCurrentPhase(2);
+          setPetOverridePos({ x: stWait.x, y: stWait.y, statusText: "ระบบเรียกคิวชำระเงิน (Calling)" });
+        } else if (elapsed < p4_8) {
+          setCurrentPhase(3);
+          const f = Math.min(1, (elapsed - p3_8) / (p4_8 - p3_8));
+          const eased = easeInOutCubic(f);
+          setPetOverridePos({
+            x: stWait.x + (stCashier.x - stWait.x) * eased,
+            y: stWait.y + (stCashier.y - stWait.y) * eased,
+            statusText: "เดินไปที่จุดชำระเงิน (Cashier)"
+          });
+        } else if (elapsed < p5_8) {
+          setCurrentPhase(4);
+          setPetOverridePos({ x: stCashier.x, y: stCashier.y, statusText: "ชำระเงินที่จุด Cashier เรียบร้อย ได้รับใบเสร็จ" });
+        } else if (elapsed < p6_8) {
+          setCurrentPhase(5);
+          setPetOverridePos({ x: stCashier.x, y: stCashier.y, statusText: "ได้รับใบเสร็จ · ระบบส่งสัญญาณการเงินไปห้องยา & เส้นทางไปห้องยาเปิดใช้งาน" });
+        } else if (elapsed < p7_8) {
+          setCurrentPhase(6);
+          const f = Math.min(1, (elapsed - p6_8) / (p7_8 - p6_8));
+          const eased = easeInOutCubic(f);
+          setPetOverridePos({
+            x: stCashier.x,
+            y: stCashier.y + (stPharm.y - stCashier.y) * eased,
+            statusText: "นำใบเสร็จไปยื่นที่ห้องจ่ายยา (Pharmacy)"
+          });
+        } else if (elapsed < p8_8) {
+          setCurrentPhase(7);
+          const f = Math.min(1, (elapsed - p7_8) / (p8_8 - p7_8));
+          const eased = easeInOutCubic(f);
+          setPetOverridePos({
+            x: stPharm.x + (stWait.x - stPharm.x) * eased,
+            y: stPharm.y,
+            statusText: "ยื่นใบเสร็จที่ห้องยาเรียบร้อย · กลับมารอเรียกที่ Waiting Zone"
+          });
+        } else {
+          setCurrentPhase(7);
+          setPetOverridePos({
+            x: stWait.x,
+            y: stWait.y,
+            statusText: "นั่งรอเรียกคิวรับยาที่ Waiting Zone (Rx, Cashier)"
+          });
+        }
+
+        if (elapsed < tStep8Total) {
+          rafRef.current = requestAnimationFrame(tick);
+        }
+      } else if (currentStep.id === 9) {
+        // Step 9: Pharmacy Dispense & Exit
+        const stWait = STATIONS.waitingRxCashier;
+        const stPharm = STATIONS.pharmacy;
+        const stExit = STATIONS.exit;
+
+        if (elapsed < p1_9) {
+          setCurrentPhase(0);
+          setPetOverridePos({ x: stWait.x, y: stWait.y, statusText: "รอเรียกคิวรับยาที่ Waiting Zone" });
+        } else if (elapsed < p2_9) {
+          setCurrentPhase(1);
+          const f = Math.min(1, (elapsed - p1_9) / (p2_9 - p1_9));
+          const eased = easeInOutCubic(f);
+          setPetOverridePos({
+            x: stWait.x + (stPharm.x - stWait.x) * eased,
+            y: stWait.y,
+            statusText: "Pharmacy Calling เรียกคิว · เดินไปรับยาที่ห้องยา"
+          });
+        } else if (elapsed < p3_9) {
+          setCurrentPhase(2);
+          setPetOverridePos({
+            x: stPharm.x,
+            y: stPharm.y,
+            statusText: "รับยา คำแนะนำการใช้ยา และเซ็นรับยาเรียบร้อย"
+          });
+        } else if (elapsed < p4_9) {
+          setCurrentPhase(3);
+          const f = Math.min(1, (elapsed - p3_9) / (p4_9 - p3_9));
+          const eased = easeInOutCubic(f);
+          setPetOverridePos({
+            x: stPharm.x + (stExit.x - stPharm.x) * eased,
+            y: stPharm.y,
+            statusText: "ระบบปิด Visit (Auto-Discharge) · เดินทางกลับทาง Exit"
+          });
+        } else {
+          setCurrentPhase(4);
+          setPetOverridePos({
+            x: stExit.x,
+            y: stPharm.y,
+            statusText: "เสร็จสิ้นการรักษา พาสัตว์เลี้ยงเดินทางกลับบ้านทาง Exit"
+          });
+        }
+
+        if (elapsed < tStep9Total) {
           rafRef.current = requestAnimationFrame(tick);
         }
       } else {
@@ -650,13 +1656,13 @@ export default function IsometricCanvas({
     return () => {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
-  }, [currentStep.id, playbackSpeed, animKey]);
+  }, [currentStep.id, playbackSpeed, animKey, stepReplayKey]);
 
   // Persistent Pet & Owner interpolated coordinates
   const ownerFrom = STATIONS[currentStep.petOwner.fromNode] || STATIONS.entrance;
   const ownerTo = STATIONS[currentStep.petOwner.toNode] || ownerFrom;
-  const ownerX = ownerFrom.x + (ownerTo.x - ownerFrom.x) * animProgress;
-  const ownerY = ownerFrom.y + (ownerTo.y - ownerFrom.y) * animProgress;
+  const ownerX = petOverridePos ? petOverridePos.x : (ownerFrom.x + (ownerTo.x - ownerFrom.x) * animProgress);
+  const ownerY = petOverridePos ? petOverridePos.y : (ownerFrom.y + (ownerTo.y - ownerFrom.y) * animProgress);
 
   // Focused nodes for the active step
   const stepFocusNodeIds = getStepFocusNodeIds(currentStep);
@@ -684,17 +1690,77 @@ export default function IsometricCanvas({
           <div className="pe-sim-toolbar shrink-0 bg-[#f4ebd9] border-b border-[#d8c6aa] px-3 py-1 flex flex-col gap-1">
             {/* ROW 1: ACTIONS & CAMERA ZOOM */}
             <div className="flex items-center justify-between gap-2 min-h-[28px]">
-              {/* Left: Button to Switch to UI & SCENE (Position aligned with return button in Scene mode) */}
-              <button
-                type="button"
-                onClick={() => onSwitchView?.("scene")}
-                className="h-7 px-2.5 bg-[#b4531a] hover:bg-[#331e10] text-[#fcf8ee] text-[11.5px] font-extrabold rounded-xs flex items-center gap-1.5 cursor-pointer transition shrink-0 shadow-2xs border-0"
-                title="สลับไปดูหน้าจอ KAHIS UI และฉากจำลองของขั้นตอนนี้ (UI & SCENE)"
-              >
-                <Eye className="w-3.5 h-3.5" />
-                <span>ดูหน้า UI {currentStep.uiWireframes.length > 0 ? `(${currentStep.uiWireframes.length})` : ""}</span>
-                <ArrowRight className="w-3 h-3" />
-              </button>
+              {/* Left: Button to Switch to UI & SCENE + Pause/Resume + Rerun Step */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => onSwitchView?.("scene")}
+                  className="h-7 px-2.5 bg-[#b4531a] hover:bg-[#331e10] text-[#fcf8ee] text-[11.5px] font-extrabold rounded-xs flex items-center gap-1.5 cursor-pointer transition shrink-0 shadow-2xs border-0"
+                  title="สลับไปดูหน้าจอ KAHIS UI และฉากจำลองของขั้นตอนนี้ (UI & SCENE)"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>ดูหน้า UI {currentStep.uiWireframes.length > 0 ? `(${currentStep.uiWireframes.length})` : ""}</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleTogglePause}
+                  className={`h-7 px-2 text-[11px] font-extrabold rounded-xs border cursor-pointer transition flex items-center gap-1 shrink-0 ${
+                    isPaused
+                      ? "bg-[#16a34a] text-[#ffffff] border-[#16a34a] hover:bg-[#15803d]"
+                      : "bg-[#fcf8ee] text-[#4a2e1b] border-[#d8c6aa] hover:bg-[#efe4ca]"
+                  }`}
+                  title={isPaused ? "เล่นต่อ (Resume)" : "หยุดชั่วคราว (Pause)"}
+                >
+                  {isPaused ? (
+                    <>
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      <span>เล่นต่อ</span>
+                    </>
+                  ) : (
+                    <>
+                      <Pause className="w-3.5 h-3.5 fill-current text-[#d97706]" />
+                      <span>หยุด</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleRerunStep}
+                  className="h-7 px-2 bg-[#fcf8ee] hover:bg-[#efe4ca] text-[#4a2e1b] text-[11px] font-extrabold rounded-xs border border-[#d8c6aa] flex items-center gap-1 cursor-pointer transition shrink-0"
+                  title="เล่นซ้ำขั้นตอนนี้ (Replay current step)"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-[#b4531a]" />
+                  <span>เล่นซ้ำขั้นนี้</span>
+                </button>
+
+                {/* PREV / STEP / NEXT NAVIGATION */}
+                <div className="flex items-center gap-0.5 border border-[#d8c6aa] bg-[#fcf8ee] rounded-xs px-0.5 shadow-2xs shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => onSelectStep?.(Math.max(1, currentStep.id - 1))}
+                    disabled={currentStep.id <= 1}
+                    className="h-7 w-6 flex items-center justify-center text-[#4a2e1b] hover:bg-[#efe4ca] disabled:opacity-30 disabled:hover:bg-transparent rounded-xs cursor-pointer transition"
+                    title="ขั้นตอนก่อนหน้า (←)"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="text-[10.5px] font-extrabold text-[#331e10] px-1 select-none whitespace-nowrap">
+                    STEP {currentStep.id}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onSelectStep?.(Math.min(9, currentStep.id + 1))}
+                    disabled={currentStep.id >= 9}
+                    className="h-7 w-6 flex items-center justify-center text-[#4a2e1b] hover:bg-[#efe4ca] disabled:opacity-30 disabled:hover:bg-transparent rounded-xs cursor-pointer transition"
+                    title="ขั้นตอนถัดไป (→)"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
 
               {/* Right: Camera Mode & Zoom Controls */}
               <div className="flex items-center gap-1 shrink-0">
@@ -774,14 +1840,18 @@ export default function IsometricCanvas({
                 <span
                   className="font-bold text-[#331e10] truncate"
                   title={
-                    currentStep.id === 3 && step3CustomStatus
+                    petOverridePos?.statusText
+                      ? petOverridePos.statusText
+                      : currentStep.id === 3 && step3CustomStatus
                       ? step3CustomStatus
                       : currentStep.petOwner.statusLabel
                   }
                 >
                   Pet &amp; Owner:{" "}
                   <span className="font-medium text-[#5a3a20]">
-                    {currentStep.id === 3 && step3CustomStatus
+                    {petOverridePos?.statusText
+                      ? petOverridePos.statusText
+                      : currentStep.id === 3 && step3CustomStatus
                       ? step3CustomStatus
                       : currentStep.petOwner.statusLabel}
                   </span>
@@ -1004,6 +2074,31 @@ export default function IsometricCanvas({
 
                 // Owner movement lanes only appear during their active step (past movement paths disappear)
                 if (lane.stream === "owner") {
+                  if (currentStep.id === 5) {
+                    if (lane.id === "owner:examGeneral>xrayUsg") return currentPhase >= 4 && currentPhase <= 7;
+                    if (lane.id === "owner:xrayUsg>examGeneral") return currentPhase >= 8 && currentPhase <= 9;
+                    return false;
+                  }
+                  if (currentStep.id === 6) {
+                    if (lane.id === "owner:examGeneral>txRoom") return currentPhase >= 4 && currentPhase <= 7;
+                    if (lane.id === "owner:txRoom>examGeneral") return currentPhase >= 8 && currentPhase <= 9;
+                    return false;
+                  }
+                  if (currentStep.id === 7) {
+                    if (lane.id === "owner:examGeneral>waitingRxCashier") return currentPhase >= 4;
+                    return false;
+                  }
+                  if (currentStep.id === 8) {
+                    if (lane.id === "owner:waitingRxCashier>cashier") return currentPhase >= 2 && currentPhase <= 3;
+                    if (lane.id === "owner:cashier>pharmacy") return currentPhase >= 5 && currentPhase <= 6;
+                    if (lane.id === "owner:pharmacy>waitingRxCashier") return currentPhase >= 7;
+                    return false;
+                  }
+                  if (currentStep.id === 9) {
+                    if (lane.id === "owner:waitingRxCashier>pharmacy") return currentPhase <= 2;
+                    if (lane.id === "owner:pharmacy>exit") return currentPhase >= 3;
+                    return false;
+                  }
                   if (lane.id !== currentStep.laneId && !currentStep.activeLanes.includes(lane.id)) {
                     return false;
                   }
@@ -1020,6 +2115,30 @@ export default function IsometricCanvas({
                 // Step 3: owner walkway lane activates when pet starts walking
                 if (currentStep.id === 3 && lane.id === "owner:waitingHall>examGeneral") {
                   isActive = animProgress > 0.02;
+                }
+                if (currentStep.id === 5) {
+                  if (lane.id === "owner:examGeneral>xrayUsg") isActive = currentPhase >= 4 && currentPhase <= 7;
+                  if (lane.id === "owner:xrayUsg>examGeneral") isActive = currentPhase >= 8 && currentPhase <= 9;
+                  if (lane.id === "system:xrayUsg>examGeneral") isActive = currentPhase >= 10;
+                }
+                if (currentStep.id === 6) {
+                  if (lane.id === "owner:examGeneral>txRoom") isActive = currentPhase >= 4 && currentPhase <= 7;
+                  if (lane.id === "owner:txRoom>examGeneral") isActive = currentPhase >= 8 && currentPhase <= 9;
+                  if (lane.id === "system:txRoom>examGeneral") isActive = currentPhase >= 10;
+                }
+                if (currentStep.id === 7) {
+                  if (lane.id === "system:examGeneral>rxRoom") isActive = currentPhase >= 3;
+                  if (lane.id === "owner:examGeneral>waitingRxCashier") isActive = currentPhase >= 4;
+                }
+                if (currentStep.id === 8) {
+                  if (lane.id === "owner:waitingRxCashier>cashier") isActive = currentPhase >= 2 && currentPhase <= 3;
+                  if (lane.id === "owner:cashier>pharmacy") isActive = currentPhase >= 5 && currentPhase <= 6;
+                  if (lane.id === "system:cashier>pharmacy") isActive = currentPhase >= 5;
+                  if (lane.id === "owner:pharmacy>waitingRxCashier") isActive = currentPhase >= 7;
+                }
+                if (currentStep.id === 9) {
+                  if (lane.id === "owner:waitingRxCashier>pharmacy") isActive = currentPhase <= 2;
+                  if (lane.id === "owner:pharmacy>exit") isActive = currentPhase >= 3;
                 }
 
                 // In STEP ZOOM: isolate only active lanes for current step
@@ -1040,6 +2159,30 @@ export default function IsometricCanvas({
                 // Step 3: owner walkway lane activates when pet starts walking
                 if (currentStep.id === 3 && lane.id === "owner:waitingHall>examGeneral") {
                   isActive = animProgress > 0.02;
+                }
+                if (currentStep.id === 5) {
+                  if (lane.id === "owner:examGeneral>xrayUsg") isActive = currentPhase >= 4 && currentPhase <= 7;
+                  if (lane.id === "owner:xrayUsg>examGeneral") isActive = currentPhase >= 8 && currentPhase <= 9;
+                  if (lane.id === "system:xrayUsg>examGeneral") isActive = currentPhase >= 10;
+                }
+                if (currentStep.id === 6) {
+                  if (lane.id === "owner:examGeneral>txRoom") isActive = currentPhase >= 4 && currentPhase <= 7;
+                  if (lane.id === "owner:txRoom>examGeneral") isActive = currentPhase >= 8 && currentPhase <= 9;
+                  if (lane.id === "system:txRoom>examGeneral") isActive = currentPhase >= 10;
+                }
+                if (currentStep.id === 7) {
+                  if (lane.id === "system:examGeneral>rxRoom") isActive = currentPhase >= 3;
+                  if (lane.id === "owner:examGeneral>waitingRxCashier") isActive = currentPhase >= 4;
+                }
+                if (currentStep.id === 8) {
+                  if (lane.id === "owner:waitingRxCashier>cashier") isActive = currentPhase >= 2 && currentPhase <= 3;
+                  if (lane.id === "owner:cashier>pharmacy") isActive = currentPhase >= 5 && currentPhase <= 6;
+                  if (lane.id === "system:cashier>pharmacy") isActive = currentPhase >= 5;
+                  if (lane.id === "owner:pharmacy>waitingRxCashier") isActive = currentPhase >= 7;
+                }
+                if (currentStep.id === 9) {
+                  if (lane.id === "owner:waitingRxCashier>pharmacy") isActive = currentPhase <= 2;
+                  if (lane.id === "owner:pharmacy>exit") isActive = currentPhase >= 3;
                 }
 
                 let strokeColor = "#cfbeaa";
@@ -1361,6 +2504,9 @@ export default function IsometricCanvas({
                 .filter((pkt) => {
                   if (pkt.stream === "owner") return false;
                   if (currentStep.id === 3 && !step3PacketVisible) return false;
+                  if (pkt.id === "pkt-step5-sideflow-back" && currentPhase < 7) return false;
+                  if (pkt.id === "pkt-step6-sideflow-back" && currentPhase < 7) return false;
+                  if (pkt.id === "pkt-step8-sys-pharm" && currentPhase < 5) return false;
                   return true;
                 })
                 .map((pkt) => {
@@ -1368,14 +2514,16 @@ export default function IsometricCanvas({
                   const toSt = STATIONS[pkt.toNode];
                   if (!fromSt || !toSt) return null;
 
+                  const hasWire = Boolean(pkt.laneId && pkt.fromNode !== pkt.toNode);
+
                   // Animate once from source station to destination station stop position (t: 0 -> 1)
                   const startX = fromSt.x;
                   const startY = fromSt.y - 28;
                   const endX = toSt.x + (pkt.stopOffsetX ?? 0);
                   const endY = toSt.y + (pkt.stopOffsetY ?? -68);
 
-                  const cardCenterX = startX + (endX - startX) * packetProgress;
-                  const cardCenterY = startY + (endY - startY) * packetProgress;
+                  const cardCenterX = hasWire ? (startX + (endX - startX) * packetProgress) : endX;
+                  const cardCenterY = hasWire ? (startY + (endY - startY) * packetProgress) : endY;
 
                   // Wire dot travels along the connection between fromSt and toSt and stops near toSt
                   const wireT = 0.18 + 0.72 * packetProgress;
@@ -1391,25 +2539,29 @@ export default function IsometricCanvas({
                         filter: "drop-shadow(0 3px 8px rgba(51, 30, 16, 0.16))"
                       }}
                     >
-                      {/* Connector from wire dot to packet card */}
-                      <line
-                        x1={wireX}
-                        y1={wireY}
-                        x2={cardCenterX}
-                        y2={cardCenterY}
-                        stroke={palette.border}
-                        strokeWidth="1.2"
-                        strokeDasharray="2 2"
-                      />
-                      {/* Leading Dot on the Wire */}
-                      <circle
-                        cx={wireX}
-                        cy={wireY}
-                        r="4.5"
-                        fill={palette.dot}
-                        stroke="#fcf8ee"
-                        strokeWidth="1.6"
-                      />
+                      {/* Connector from wire dot to packet card (only when connected by wire) */}
+                      {hasWire && (
+                        <>
+                          <line
+                            x1={wireX}
+                            y1={wireY}
+                            x2={cardCenterX}
+                            y2={cardCenterY}
+                            stroke={palette.border}
+                            strokeWidth="1.2"
+                            strokeDasharray="2 2"
+                          />
+                          {/* Leading Dot on the Wire */}
+                          <circle
+                            cx={wireX}
+                            cy={wireY}
+                            r="4.5"
+                            fill={palette.dot}
+                            stroke="#fcf8ee"
+                            strokeWidth="1.6"
+                          />
+                        </>
+                      )}
 
                       {/* Protocol-Explorer Style Compact Packet Card (Support 2-row or 3-row layout) */}
                       {(() => {
@@ -1498,7 +2650,17 @@ export default function IsometricCanvas({
                 ป้ายกำกับ Action ที่ผุดขึ้นมาเหนือสถานีพร้อมจุดสี Staff/DVM/Sideflow/System/Alarm
                 ================================================================= */}
             <g className="note-layer">
-              {currentStep.stationNotes.map((note) => {
+              {currentStep.stationNotes
+                .filter((note) => {
+                  if (currentStep.id >= 5 && currentStep.id <= 9) {
+                    if (currentStep.id === 7 && note.id === "note-step7-rx") return currentPhase >= 3;
+                    if (currentStep.id === 8 && note.id === "note-step8-staff") return true;
+                    if (currentStep.id === 8 && note.id === "note-step8-pharm") return currentPhase >= 6;
+                    return currentPhase >= 1;
+                  }
+                  return true;
+                })
+                .map((note) => {
                 const st = STATIONS[note.nodeId];
                 if (!st) return null;
 
@@ -1572,6 +2734,100 @@ export default function IsometricCanvas({
                         {noteDetail}
                       </text>
                     </g>
+                  </g>
+                );
+              })}
+            </g>
+
+            {/* =================================================================
+                LAYER 7: PHASED SUB-WINDOWS (<g className="sub-window-layer">)
+                หน้าต่างย่อยสีเขียวมิ้นต์ (#f0fdf4) พร้อมจุดและแท็กตาม Role
+                ================================================================= */}
+            <g className="sub-window-layer">
+              {STEP_SUBWINDOWS.filter((sw) => {
+                if (sw.stepId !== currentStep.id) return false;
+                if (sw.phase > currentPhase) return false;
+                if (sw.clearOnPhase !== undefined && currentPhase >= sw.clearOnPhase) return false;
+                return true;
+              }).map((sw) => {
+                const pos = getSubWindowPos(sw);
+                const isMultiLine = Boolean(sw.lines && sw.lines.length > 1);
+                const hasMultiRoles = Boolean(sw.roles && sw.roles.length > 0);
+                const isS8Left = sw.id === "s8-5" || sw.id === "s8-6";
+                const cardW = isS8Left ? 156 : 168;
+                const cardH = isMultiLine ? 32 : 20;
+                const fontSize = isS8Left ? 7.8 : 8.2;
+
+                const primaryPalette = TONE_PALETTE[sw.roleTone || "dvm"];
+
+                return (
+                  <g
+                    key={sw.id}
+                    className="pe-sub-window"
+                    transform={`translate(${pos.x - cardW / 2}, ${pos.y - cardH / 2})`}
+                    style={{
+                      filter: "drop-shadow(0 2px 5px rgba(22, 101, 52, 0.12))"
+                    }}
+                  >
+                    {/* Mint green sub-window card */}
+                    <rect
+                      x="0"
+                      y="0"
+                      width={cardW}
+                      height={cardH}
+                      rx="3"
+                      fill="#f0fdf4"
+                      stroke="#86efac"
+                      strokeWidth="1.2"
+                    />
+
+                    {/* Multi-role dots or single role dot */}
+                    {hasMultiRoles && sw.roles ? (
+                      <>
+                        <circle cx="8" cy={cardH / 2} r="2.8" fill={TONE_PALETTE[sw.roles[0].tone].dot} />
+                        <circle cx="15" cy={cardH / 2} r="2.8" fill={TONE_PALETTE[sw.roles[1].tone].dot} />
+                      </>
+                    ) : (
+                      <circle cx="10" cy={isMultiLine ? 10 : cardH / 2} r="3.2" fill={primaryPalette.dot} />
+                    )}
+
+                    {/* Text display: multi-line vs multi-role vs single-role */}
+                    {isMultiLine && sw.lines ? (
+                      <>
+                        <text x="18" y="11.5" fontSize={fontSize}>
+                          <tspan fontWeight="800" fill={primaryPalette.dot}>
+                            {sw.roleTag}{" "}
+                          </tspan>
+                          <tspan fontWeight="700" fill="#14532d">
+                            {sw.lines[0]}
+                          </tspan>
+                        </text>
+                        <text x="18" y="24" fontSize={fontSize} fontWeight="700" fill="#14532d">
+                          {sw.lines[1]}
+                        </text>
+                      </>
+                    ) : hasMultiRoles && sw.roles ? (
+                      <text x="21" y={cardH / 2 + 3.2} fontSize={fontSize}>
+                        <tspan fontWeight="800" fill={TONE_PALETTE[sw.roles[0].tone].dot}>
+                          {sw.roles[0].tag}
+                        </tspan>
+                        <tspan fontWeight="800" fill={TONE_PALETTE[sw.roles[1].tone].dot}>
+                          {sw.roles[1].tag}{" "}
+                        </tspan>
+                        <tspan fontWeight="700" fill="#14532d">
+                          {sw.text}
+                        </tspan>
+                      </text>
+                    ) : (
+                      <text x="18" y={cardH / 2 + 3.2} fontSize={fontSize}>
+                        <tspan fontWeight="800" fill={primaryPalette.dot}>
+                          {sw.roleTag}{" "}
+                        </tspan>
+                        <tspan fontWeight="700" fill="#14532d">
+                          {sw.text}
+                        </tspan>
+                      </text>
+                    )}
                   </g>
                 );
               })}
