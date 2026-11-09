@@ -680,83 +680,117 @@ export default function IsometricCanvas({
           ========================================================================= */}
       {viewMode === "flow" && (
         <div className="relative w-full h-full flex flex-col overflow-hidden">
-          {/* Top Stream Legend Bar + Camera Zoom Controls */}
-          <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-3.5 py-1.5 bg-[#f4ebd9] border-b border-[#d8c6aa]">
-            <div className="flex flex-wrap items-center gap-3.5">
-              <span className="text-[11px] font-extrabold text-[#331e10] tracking-wider">
-                LANES:
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-[#8c5828]">
-                <span className="w-4 h-1 bg-[#8c5828] rounded-full inline-block" />
-                Pet &amp; Owner Movement
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-[#16a34a]">
-                <span className="w-4 h-0.5 border-b-2 border-dashed border-[#16a34a] inline-block" />
-                System Data Flow
-              </span>
+          {/* BAR 2: TOOLBAR (Compact 2 rows: Row 1 = Controls / Row 2 = Live Status) */}
+          <div className="pe-sim-toolbar shrink-0 bg-[#f4ebd9] border-b border-[#d8c6aa] px-3 py-1 flex flex-col gap-1">
+            {/* ROW 1: ACTIONS & CAMERA ZOOM */}
+            <div className="flex items-center justify-between gap-2 min-h-[28px]">
+              {/* Left: Button to Switch to UI & SCENE (Position aligned with return button in Scene mode) */}
+              <button
+                type="button"
+                onClick={() => onSwitchView?.("scene")}
+                className="h-7 px-2.5 bg-[#b4531a] hover:bg-[#331e10] text-[#fcf8ee] text-[11.5px] font-extrabold rounded-xs flex items-center gap-1.5 cursor-pointer transition shrink-0 shadow-2xs border-0"
+                title="สลับไปดูหน้าจอ KAHIS UI และฉากจำลองของขั้นตอนนี้ (UI & SCENE)"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>ดูหน้า UI {currentStep.uiWireframes.length > 0 ? `(${currentStep.uiWireframes.length})` : ""}</span>
+                <ArrowRight className="w-3 h-3" />
+              </button>
+
+              {/* Right: Camera Mode & Zoom Controls */}
+              <div className="flex items-center gap-1 shrink-0">
+                <span className="text-[10px] font-extrabold text-[#7a5a40] mr-1 hidden sm:inline">
+                  CAMERA:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsAutoZoom(true)}
+                  className={`h-7 px-2 text-[11px] font-extrabold rounded-xs border cursor-pointer transition flex items-center gap-1 ${
+                    isAutoZoom
+                      ? "bg-[#b4531a] text-[#fcf8ee] border-[#b4531a]"
+                      : "bg-[#fcf8ee] text-[#4a2e1b] border-[#d8c6aa] hover:bg-[#efe4ca]"
+                  }`}
+                  title="ซูมและติดตามขั้นตอนอัตโนมัติ (Step Zoom)"
+                >
+                  <ZoomIn className="w-3 h-3" />
+                  <span>STEP ZOOM</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsAutoZoom(false)}
+                  className={`h-7 px-2 text-[11px] font-extrabold rounded-xs border cursor-pointer transition flex items-center gap-1 ${
+                    !isAutoZoom
+                      ? "bg-[#331e10] text-[#fcf8ee] border-[#331e10]"
+                      : "bg-[#fcf8ee] text-[#4a2e1b] border-[#d8c6aa] hover:bg-[#efe4ca]"
+                  }`}
+                  title="ดูแผนผังภาพรวมทั้งโรงพยาบาล (Full Map 100%)"
+                >
+                  <Maximize2 className="w-3 h-3" />
+                  <span>FULL MAP</span>
+                </button>
+                {!isAutoZoom && (
+                  <div className="flex items-center gap-1 ml-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handleZoomButton(1 / 1.35)}
+                      className="h-7 w-7 flex items-center justify-center rounded-xs border border-[#d8c6aa] bg-[#fcf8ee] text-[#4a2e1b] hover:bg-[#efe4ca] cursor-pointer"
+                      title="ซูมออก (-)"
+                    >
+                      <ZoomOut className="w-3 h-3" />
+                    </button>
+                    <span className="text-[11px] font-extrabold text-[#4a2e1b] min-w-[34px] text-center">
+                      {currentZoomPct}%
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleZoomButton(1.35)}
+                      className="h-7 w-7 flex items-center justify-center rounded-xs border border-[#d8c6aa] bg-[#fcf8ee] text-[#4a2e1b] hover:bg-[#efe4ca] cursor-pointer"
+                      title="ซูมเข้า (+)"
+                    >
+                      <ZoomIn className="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResetFullMap}
+                      className="h-7 px-2 text-[10.5px] font-extrabold rounded-xs border border-[#d8c6aa] bg-[#fcf8ee] text-[#4a2e1b] hover:bg-[#efe4ca] cursor-pointer"
+                      title="รีเซ็ตมุมมองเป็น 100%"
+                    >
+                      RESET
+                    </button>
+                  </div>
+                )}
+                <span className="text-[10px] font-bold text-[#7a5a40] ml-1.5 hidden md:inline">
+                  ล้อเมาส์=ซูม · ลาก=เลื่อน
+                </span>
+              </div>
             </div>
 
-            {/* Camera Zoom Mode Toggle (Auto-Focus vs Full Map) */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-extrabold text-[#7a5a40] mr-1">
-                CAMERA ({currentZoomPct}%):
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsAutoZoom(true)}
-                className={`px-2 py-0.5 text-[11px] font-extrabold rounded-xs border cursor-pointer transition flex items-center gap-1 ${
-                  isAutoZoom
-                    ? "bg-[#b4531a] text-[#fcf8ee] border-[#b4531a]"
-                    : "bg-[#fcf8ee] text-[#4a2e1b] border-[#d8c6aa] hover:bg-[#efe4ca]"
-                }`}
-                title="ซูมและเลื่อนกล้องตามขั้นตอนอัตโนมัติ"
-              >
-                <ZoomIn className="w-3 h-3" />
-                <span>STEP ZOOM</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsAutoZoom(false)}
-                className={`px-2 py-0.5 text-[11px] font-extrabold rounded-xs border cursor-pointer transition flex items-center gap-1 ${
-                  !isAutoZoom
-                    ? "bg-[#331e10] text-[#fcf8ee] border-[#331e10]"
-                    : "bg-[#fcf8ee] text-[#4a2e1b] border-[#d8c6aa] hover:bg-[#efe4ca]"
-                }`}
-                title="ดูแผนผังเต็มทั้งโรงพยาบาล (100%)"
-              >
-                <Maximize2 className="w-3 h-3" />
-                <span>FULL MAP</span>
-              </button>
-              {!isAutoZoom && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => handleZoomButton(1 / 1.35)}
-                    className="px-1.5 py-0.5 rounded-xs border border-[#d8c6aa] bg-[#fcf8ee] text-[#4a2e1b] hover:bg-[#efe4ca] cursor-pointer"
-                    title="ซูมออก"
-                  >
-                    <ZoomOut className="w-3 h-3" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleZoomButton(1.35)}
-                    className="px-1.5 py-0.5 rounded-xs border border-[#d8c6aa] bg-[#fcf8ee] text-[#4a2e1b] hover:bg-[#efe4ca] cursor-pointer"
-                    title="ซูมเข้า"
-                  >
-                    <ZoomIn className="w-3 h-3" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleResetFullMap}
-                    className="px-2 py-0.5 text-[11px] font-extrabold rounded-xs border border-[#d8c6aa] bg-[#fcf8ee] text-[#4a2e1b] hover:bg-[#efe4ca] cursor-pointer"
-                    title="รีเซ็ตมุมมองเป็นแผนผังเต็ม 100%"
-                  >
-                    RESET
-                  </button>
-                  <span className="text-[10.5px] font-bold text-[#7a5a40] ml-1">
-                    ล้อเมาส์ = ซูม · ลาก = เลื่อน
+            {/* ROW 2: LIVE STATUS & CONTEXT */}
+            <div className="flex items-center justify-between gap-2 text-[12px] min-w-0 pt-0.5 border-t border-[#d8c6aa]/50">
+              <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+                <span className="px-1.5 py-0.2 text-[10px] font-extrabold tracking-wider bg-[#331e10] text-[#fcf8ee] rounded-xs shrink-0">
+                  STEP {currentStep.id} LIVE
+                </span>
+                <span className="w-2 h-2 rounded-full bg-[#8c5828] inline-block shrink-0" />
+                <span
+                  className="font-bold text-[#331e10] truncate"
+                  title={
+                    currentStep.id === 3 && step3CustomStatus
+                      ? step3CustomStatus
+                      : currentStep.petOwner.statusLabel
+                  }
+                >
+                  Pet &amp; Owner:{" "}
+                  <span className="font-medium text-[#5a3a20]">
+                    {currentStep.id === 3 && step3CustomStatus
+                      ? step3CustomStatus
+                      : currentStep.petOwner.statusLabel}
                   </span>
-                </>
+                </span>
+              </div>
+              {currentStep.uiWireframes.length > 0 && (
+                <span className="text-[10.5px] font-bold text-[#1f7a4c] bg-[#dfece3] px-2 py-0.2 rounded-xs border border-[#b8d4c2] shrink-0">
+                  {currentStep.module} ({currentStep.uiWireframes.length} หน้าจอ)
+                </span>
               )}
             </div>
           </div>
@@ -1545,140 +1579,160 @@ export default function IsometricCanvas({
             </svg>
           </div>
 
-          {/* ===================================================================
-              NON-MODAL ACTION BANNER & "INSPECT UI & SCENE" CTA BAR
-              (แทนที่การใช้ Modal Popup ด้วยแถบแนะนำให้กดสลับไปดูหน้า UI & SCENE)
-              =================================================================== */}
-          <div className="shrink-0 flex flex-wrap items-center justify-between gap-3 px-4 py-2 bg-[#fcf8ee] border-t border-[#d8c6aa]">
-            <div className="flex items-center gap-3 min-w-0">
-              <span className="px-2 py-0.5 text-[11px] font-extrabold tracking-wider bg-[#331e10] text-[#fcf8ee] rounded-xs shrink-0">
-                STEP {currentStep.id} LIVE STATUS
-              </span>
-              <div className="flex items-center gap-2 text-[12.5px] font-bold text-[#331e10] truncate">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#8c5828] inline-block shrink-0" />
-                <span className="truncate">
-                  Pet &amp; Owner:{" "}
-                  {currentStep.id === 3 && step3CustomStatus
-                    ? step3CustomStatus
-                    : currentStep.petOwner.statusLabel}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2.5 shrink-0">
-              {currentStep.uiWireframes.length > 0 && (
-                <span className="text-[11.5px] font-bold text-[#1f7a4c] bg-[#dfece3] px-2 py-0.5 rounded-xs border border-[#b8d4c2]">
-                  มีหน้าจอ KAHIS UI ({currentStep.uiWireframes.length} หน้าจอ)
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={() => onSwitchView?.("scene")}
-                className="px-3.5 py-1.5 bg-[#b4531a] hover:bg-[#331e10] text-[#fcf8ee] text-[12.5px] font-extrabold tracking-wide rounded-xs flex items-center gap-1.5 cursor-pointer transition shadow-2xs border-0"
-              >
-                <Eye className="w-4 h-4" />
-                <span>{currentStep.uiPromptLabel}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
       {/* =========================================================================
-          VIEW 2: UI & SCENE VIEWER (In-Panel Fixed-Height Non-Modal Inspector)
+          VIEW 2: UI & SCENE VIEWER
           ========================================================================= */}
       {viewMode === "scene" && (
-        <div className="w-full h-full p-4 overflow-hidden bg-[#f6efe0] flex flex-col gap-3">
-          {/* Top Bar inside UI & SCENE (Fixed Height) */}
-          <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 border-b border-[#d8c6aa] pb-2.5">
-            <div className="flex items-center gap-3 min-w-0">
+        <div className="relative w-full h-full flex flex-col overflow-hidden bg-[#f6efe0]">
+          {/* BAR 2: TOOLBAR FOR UI & SCENE (Exact same height & left-aligned toggle button) */}
+          <div className="pe-sim-toolbar shrink-0 bg-[#f4ebd9] border-b border-[#d8c6aa] px-3 py-1 flex flex-col gap-1">
+            {/* ROW 1: ACTIONS & VIEW LAYOUT / ZOOM */}
+            <div className="flex items-center justify-between gap-2 min-h-[28px]">
+              {/* Left: Button to Switch back to FLOW MAP (EXACT SAME POSITION AND DIMENSIONS) */}
               <button
                 type="button"
                 onClick={() => onSwitchView?.("flow")}
-                className="px-3 py-1 bg-[#fcf8ee] hover:bg-[#efe4ca] text-[#331e10] border border-[#a68664] rounded-xs text-[12px] font-extrabold flex items-center gap-1.5 cursor-pointer transition shrink-0"
+                className="h-7 px-2.5 bg-[#b4531a] hover:bg-[#331e10] text-[#fcf8ee] text-[11.5px] font-extrabold rounded-xs flex items-center gap-1.5 cursor-pointer transition shrink-0 shadow-2xs border-0"
+                title="สลับกลับไปดูแผนผังการไหลของเคสและเวชระเบียน (FLOW MAP)"
               >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>กลับไปแผนผัง (FLOW MAP)</span>
+                <ArrowLeft className="w-3 h-3" />
+                <span>กลับหน้า FLOW</span>
+                <Layers className="w-3.5 h-3.5" />
               </button>
-              <div className="min-w-0">
-                <h3 className="text-[15.5px] font-extrabold text-[#331e10] tracking-wide m-0 truncate">
-                  UI &amp; SCENE INSPECTOR · STEP {currentStep.id}: {currentStep.title}
-                </h3>
-                <p className="text-[12px] text-[#7a5a40] m-0 truncate">
-                  แสดงหน้าจอระบบ KAHIS EMR และฉากจำลองขนาดคงที่ภายในหน้าต่างเดียว
-                </p>
+
+              {/* Right: Layout Toggle & Zoom Controls */}
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setSceneLayout("split")}
+                  className={`h-7 px-2 text-[11px] font-extrabold rounded-xs border cursor-pointer transition flex items-center gap-1 ${
+                    sceneLayout === "split"
+                      ? "bg-[#331e10] text-[#fcf8ee] border-[#331e10]"
+                      : "bg-[#fcf8ee] text-[#4a2e1b] border-[#d8c6aa] hover:bg-[#efe4ca]"
+                  }`}
+                  title="แสดงคู่กันทั้งภาพจำลองคลินิกและหน้าจอระบบ KAHIS (Split View)"
+                >
+                  <Layers className="w-3 h-3" />
+                  <span>SPLIT</span>
+                </button>
+                {currentStep.uiWireframes.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSceneLayout("ui-only")}
+                    className={`h-7 px-2 text-[11px] font-extrabold rounded-xs border cursor-pointer transition flex items-center gap-1 ${
+                      sceneLayout === "ui-only"
+                        ? "bg-[#331e10] text-[#fcf8ee] border-[#331e10]"
+                        : "bg-[#fcf8ee] text-[#4a2e1b] border-[#d8c6aa] hover:bg-[#efe4ca]"
+                    }`}
+                    title="ขยายเฉพาะหน้าจอ KAHIS UI เต็มพื้นที่ (Full UI)"
+                  >
+                    <span>UI ONLY</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSceneLayout("scene-only")}
+                  className={`h-7 px-2 text-[11px] font-extrabold rounded-xs border cursor-pointer transition flex items-center gap-1 ${
+                    sceneLayout === "scene-only"
+                      ? "bg-[#331e10] text-[#fcf8ee] border-[#331e10]"
+                      : "bg-[#fcf8ee] text-[#4a2e1b] border-[#d8c6aa] hover:bg-[#efe4ca]"
+                  }`}
+                  title="ขยายเฉพาะภาพจำลองตัวละครและคลินิก (Clinic Scene)"
+                >
+                  <span>SCENE ONLY</span>
+                </button>
+
+                <div className="h-4 w-px bg-[#d8c6aa] mx-1" />
+
+                <button
+                  type="button"
+                  onClick={() => setZoomLevel((z) => Math.max(1, +(z - 0.25).toFixed(2)))}
+                  disabled={zoomLevel <= 1}
+                  className="h-7 w-7 flex items-center justify-center bg-[#fcf8ee] border border-[#d8c6aa] rounded-xs text-[11px] font-extrabold text-[#331e10] disabled:opacity-40 cursor-pointer"
+                  title="ลดขนาดภาพ (-)"
+                >
+                  <ZoomOut className="w-3 h-3" />
+                </button>
+                <span className="text-[11px] font-extrabold text-[#4a2e1b] min-w-[34px] text-center">
+                  {Math.round(zoomLevel * 100)}%
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setZoomLevel((z) => Math.min(2, +(z + 0.25).toFixed(2)))}
+                  disabled={zoomLevel >= 2}
+                  className="h-7 w-7 flex items-center justify-center bg-[#fcf8ee] border border-[#d8c6aa] rounded-xs text-[11px] font-extrabold text-[#331e10] disabled:opacity-40 cursor-pointer"
+                  title="ขยายขนาดภาพ (+)"
+                >
+                  <ZoomIn className="w-3 h-3" />
+                </button>
               </div>
             </div>
 
-            {/* In-Panel Layout & Zoom Controls */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => setSceneLayout("split")}
-                className={`px-2.5 py-1 text-[11.5px] font-extrabold rounded-xs border cursor-pointer transition ${
-                  sceneLayout === "split"
-                    ? "bg-[#331e10] text-[#fcf8ee] border-[#331e10]"
-                    : "bg-[#fcf8ee] text-[#4a2e1b] border-[#d8c6aa]"
-                }`}
-              >
-                <Layers className="w-3.5 h-3.5 inline mr-1" />
-                SPLIT VIEW
-              </button>
-              {currentStep.uiWireframes.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setSceneLayout("ui-only")}
-                  className={`px-2.5 py-1 text-[11.5px] font-extrabold rounded-xs border cursor-pointer transition ${
-                    sceneLayout === "ui-only"
-                      ? "bg-[#331e10] text-[#fcf8ee] border-[#331e10]"
-                      : "bg-[#fcf8ee] text-[#4a2e1b] border-[#d8c6aa]"
-                  }`}
-                >
-                  FULL UI SCREEN
-                </button>
+            {/* ROW 2: UI INSPECTOR CONTEXT & SCREEN SELECTOR */}
+            <div className="flex items-center justify-between gap-2 text-[12px] min-w-0 pt-0.5 border-t border-[#d8c6aa]/50">
+              <div className="flex items-center gap-2 min-w-0 truncate">
+                <span className="px-1.5 py-0.2 text-[10px] font-extrabold tracking-wider bg-[#1f7a4c] text-[#fcf8ee] rounded-xs shrink-0">
+                  STEP {currentStep.id} UI
+                </span>
+                <span className="font-bold text-[#331e10] truncate" title={currentStep.title}>
+                  {currentStep.title}
+                </span>
+                <span className="text-[#7a5a40] hidden md:inline truncate">
+                  · {currentStep.module}
+                </span>
+              </div>
+
+              {currentStep.uiWireframes.length > 1 && (
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="text-[10px] font-extrabold text-[#b4531a]">
+                    SCREEN ({selectedWireframeIdx + 1}/{currentStep.uiWireframes.length}):
+                  </span>
+                  <select
+                    value={selectedWireframeIdx}
+                    onChange={(e) => setSelectedWireframeIdx(Number(e.target.value))}
+                    className="text-[11px] font-bold bg-[#fcf8ee] border border-[#d8c6aa] rounded-xs px-1.5 py-0.5 text-[#331e10] cursor-pointer"
+                  >
+                    {currentStep.uiWireframes.map((wf, idx) => (
+                      <option key={idx} value={idx}>
+                        {idx + 1}. {wf.title}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedWireframeIdx((prev) =>
+                        prev > 0 ? prev - 1 : currentStep.uiWireframes.length - 1
+                      )
+                    }
+                    className="h-5 w-5 flex items-center justify-center bg-[#f6efe0] hover:bg-[#efe4ca] border border-[#d8c6aa] rounded-xs text-[#331e10] cursor-pointer shrink-0"
+                    title="หน้าจอก่อนหน้า"
+                  >
+                    <ChevronLeft className="w-3 h-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedWireframeIdx((prev) =>
+                        prev < currentStep.uiWireframes.length - 1 ? prev + 1 : 0
+                      )
+                    }
+                    className="h-5 w-5 flex items-center justify-center bg-[#f6efe0] hover:bg-[#efe4ca] border border-[#d8c6aa] rounded-xs text-[#331e10] cursor-pointer shrink-0"
+                    title="หน้าจอถัดไป"
+                  >
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
+                </div>
               )}
-              <button
-                type="button"
-                onClick={() => setSceneLayout("scene-only")}
-                className={`px-2.5 py-1 text-[11.5px] font-extrabold rounded-xs border cursor-pointer transition ${
-                  sceneLayout === "scene-only"
-                    ? "bg-[#331e10] text-[#fcf8ee] border-[#331e10]"
-                    : "bg-[#fcf8ee] text-[#4a2e1b] border-[#d8c6aa]"
-                }`}
-              >
-                FULL CLINIC SCENE
-              </button>
-
-              <div className="h-5 w-px bg-[#d8c6aa] mx-1" />
-
-              <button
-                type="button"
-                onClick={() => setZoomLevel((z) => Math.max(1, +(z - 0.25).toFixed(2)))}
-                disabled={zoomLevel <= 1}
-                className="px-2 py-1 bg-[#fcf8ee] border border-[#d8c6aa] rounded-xs text-[11.5px] font-extrabold text-[#331e10] disabled:opacity-40 cursor-pointer"
-                title="ลดขนาดภาพ"
-              >
-                <ZoomOut className="w-3.5 h-3.5" />
-              </button>
-              <span className="text-[11.5px] font-extrabold text-[#4a2e1b] min-w-[42px] text-center">
-                {Math.round(zoomLevel * 100)}%
-              </span>
-              <button
-                type="button"
-                onClick={() => setZoomLevel((z) => Math.min(2, +(z + 0.25).toFixed(2)))}
-                disabled={zoomLevel >= 2}
-                className="px-2 py-1 bg-[#fcf8ee] border border-[#d8c6aa] rounded-xs text-[11.5px] font-extrabold text-[#331e10] disabled:opacity-40 cursor-pointer"
-                title="ขยายขนาดภาพในหน้าต่าง"
-              >
-                <ZoomIn className="w-3.5 h-3.5" />
-              </button>
             </div>
           </div>
 
-          {/* Main Fixed-Height Content Area (No extra bars shifting height!) */}
+          {/* BAR 3: CANVAS VIEW (Content Area with compact padding) */}
           <div
-            className={`grid gap-4 flex-1 min-h-0 overflow-hidden ${
+            className={`grid gap-3 flex-1 min-h-0 p-2.5 overflow-hidden ${
               sceneLayout === "split" ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
             }`}
           >

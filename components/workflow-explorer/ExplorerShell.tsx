@@ -24,7 +24,9 @@ import {
   Layers,
   Code2,
   History,
-  Compass
+  Compass,
+  Maximize2,
+  Minimize2
 } from "lucide-react";
 
 export default function ExplorerShell() {
@@ -43,6 +45,17 @@ export default function ExplorerShell() {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
   const [isManualOpen, setIsManualOpen] = useState<boolean>(false);
+  const [isCanvasFullscreen, setIsCanvasFullscreen] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isCanvasFullscreen) {
+        setIsCanvasFullscreen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isCanvasFullscreen]);
 
   const fallbackStep: WorkflowStep = WORKFLOWS[0].steps[0];
   const currentStep: WorkflowStep =
@@ -329,8 +342,8 @@ export default function ExplorerShell() {
                                   {isDone ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : st.id}
                                 </div>
                                 <div className="pe-step-text">
-                                  <div className="pe-step-title">{st.title}</div>
-                                  <div className="pe-step-sub">{st.subtitle}</div>
+                                  <div className="pe-step-title" title={st.title}>{st.title}</div>
+                                  <div className="pe-step-sub" title={st.subtitle}>{st.subtitle}</div>
                                 </div>
                                 <span
                                   className={`pe-legend-dot ${st.badgeColor} shrink-0`}
@@ -381,13 +394,16 @@ export default function ExplorerShell() {
         {/* -----------------------------------------------------------------------
             PANEL 2: SIMULATION (Center-Top, 1fr)
             ----------------------------------------------------------------------- */}
-        <section className="pe-panel pe-simulation flex-1">
+        <section className={`pe-panel pe-simulation flex-1 ${isCanvasFullscreen ? "is-fullscreen" : ""}`}>
+          {/* BAR 1: DISPLAY BAR */}
           <div className="pe-panel-head">
+            {/* 1. Left: View Mode Toggle */}
             <div className="pe-sim-view-toggle">
               <button
                 type="button"
                 onClick={() => setViewMode("flow")}
                 className={`pe-pill-btn ${viewMode === "flow" ? "is-active" : ""}`}
+                title="ดูแผนผังการไหล Isometric Multi-Lane (FLOW MAP)"
               >
                 FLOW MAP
               </button>
@@ -395,11 +411,34 @@ export default function ExplorerShell() {
                 type="button"
                 onClick={() => setViewMode("scene")}
                 className={`pe-pill-btn ${viewMode === "scene" ? "is-active" : ""}`}
+                title="ดูหน้าจอ KAHIS UI และฉากจำลอง (UI & SCENE)"
               >
                 UI &amp; SCENE
               </button>
             </div>
 
+            {/* 2. Middle: LANES Legend (ระหว่าง [flow][ui] กับ [step][fullscreen]) */}
+            <div className="pe-head-lanes flex items-center gap-2.5 px-3 py-1 rounded bg-[#f4ebd9]/80 border border-[#d8c6aa]/70">
+              <span className="text-[10.5px] font-extrabold text-[#331e10] tracking-wider">
+                LANES:
+              </span>
+              <span
+                className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#8c5828]"
+                title="เส้นทางการเคลื่อนที่ของผู้ป่วยและเจ้าของ (Pet & Owner Movement)"
+              >
+                <span className="w-3.5 h-1 bg-[#8c5828] rounded-full inline-block" />
+                <span className="pe-lane-label">Pet &amp; Owner</span>
+              </span>
+              <span
+                className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#16a34a]"
+                title="เส้นทางข้อมูลและสถานะในระบบ KAHIS (System Data Flow)"
+              >
+                <span className="w-3.5 h-0.5 border-b-2 border-dashed border-[#16a34a] inline-block" />
+                <span className="pe-lane-label">System Flow</span>
+              </span>
+            </div>
+
+            {/* 3. Right: Step Navigation & Full Screen */}
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -421,6 +460,24 @@ export default function ExplorerShell() {
                 title="ถัดไป (→)"
               >
                 ›
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsCanvasFullscreen((prev) => !prev)}
+                className={`pe-pill-btn ${isCanvasFullscreen ? "is-active text-[#b4531a]" : ""}`}
+                title={isCanvasFullscreen ? "ออกจากโหมดเต็มจอ (Esc)" : "แสดงแผนภาพเต็มหน้าจอ (Full Screen)"}
+              >
+                {isCanvasFullscreen ? (
+                  <>
+                    <Minimize2 className="w-3.5 h-3.5 mr-1 inline" />
+                    <span>EXIT FULL</span>
+                  </>
+                ) : (
+                  <>
+                    <Maximize2 className="w-3.5 h-3.5 mr-1 inline" />
+                    <span>FULL SCREEN</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
